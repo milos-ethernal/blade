@@ -232,10 +232,25 @@ func TestAddTxErrors(t *testing.T) {
 		)
 	})
 
-	t.Run("ErrUnderpriced", func(t *testing.T) {
+	t.Run("ErrUnderpriced with london fork enabled", func(t *testing.T) {
 		t.Parallel()
 		pool := setupPool()
-		pool.priceLimit = 1000000
+		pool.baseFee = 10
+
+		tx := newTx(defaultAddr, 0, 1) // gasPrice == 1
+		tx = signTx(tx)
+
+		assert.ErrorIs(t,
+			pool.addTx(local, tx),
+			ErrUnderpriced,
+		)
+	})
+
+	t.Run("ErrUnderpriced without london fork", func(t *testing.T) {
+		t.Parallel()
+		pool := setupPool()
+		pool.forks.RemoveFork("london")
+		pool.priceLimit = 100_000
 
 		tx := newTx(defaultAddr, 0, 1) // gasPrice == 1
 		tx = signTx(tx)
