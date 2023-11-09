@@ -297,17 +297,7 @@ func TestEth_GasPrice_WithLondonFork(t *testing.T) {
 	// not using newTestEthEndpoint as we need to set priceLimit
 	eth := newTestEthEndpointWithPriceLimit(store, priceLimit)
 
-	t.Run("returns price limit flag value when it is larger than MaxPriorityFee+BaseFee", func(t *testing.T) {
-		store.baseFee = 0
-
-		res, err := eth.GasPrice()
-
-		assert.NoError(t, err)
-		assert.NotNil(t, res)
-		assert.Equal(t, argUint64(priceLimit), res)
-	})
-
-	t.Run("returns MaxPriorityFee+BaseFee when it is larger than set price limit flag", func(t *testing.T) {
+	t.Run("returns MaxPriorityFee+BaseFee", func(t *testing.T) {
 		store.baseFee = baseFee
 
 		res, err := eth.GasPrice()
