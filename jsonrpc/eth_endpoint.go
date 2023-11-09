@@ -388,7 +388,7 @@ func (e *Eth) getGasPrice() (uint64, error) {
 			return 0, err
 		}
 
-		return common.Max(e.priceLimit, priorityFee.Uint64()+e.store.GetBaseFee()), nil
+		return priorityFee.Uint64() + e.store.GetBaseFee(), nil
 	}
 
 	// Fetch average gas price in uint64
