@@ -64,6 +64,9 @@ var (
 	ChildGovernor *contracts.Artifact
 	ChildTimelock *contracts.Artifact
 
+	// Account Abstraction
+	EntryPoint *artifact.Artifact
+
 	// test smart contracts
 	//go:embed test-contracts/*
 	testContracts          embed.FS
@@ -326,6 +329,11 @@ func init() {
 	}
 
 	NumberPersister, err = contracts.DecodeArtifact(readTestContractContent("NumberPersister.json"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	EntryPoint, err = contracts.DecodeArtifact([]byte(EntryPointArtifact))
 	if err != nil {
 		log.Fatal(err)
 	}
