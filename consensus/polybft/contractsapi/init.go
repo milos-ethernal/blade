@@ -65,7 +65,7 @@ var (
 	ChildTimelock *contracts.Artifact
 
 	// Account Abstraction
-	EntryPoint *artifact.Artifact
+	EntryPoint *contracts.Artifact
 
 	// test smart contracts
 	//go:embed test-contracts/*
