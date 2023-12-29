@@ -67,7 +67,8 @@ function createGenesis() {
     --native-token-config "Blade:BLADE:18:true" \
     --blade-admin $address1 \
     --proxy-contracts-admin 0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed \
-    --base-fee-config 1000000000
+    --base-fee-config 1000000000 \
+    --burn-contract "0:0x0000000000000000000000000000000000000000"
 }
 
 function initBridge() {
@@ -126,6 +127,7 @@ function startNodes() {
 
       ./blade server --data-dir "$data_dir" --chain genesis.json \
         --grpc-address ":$grpc_port" --libp2p ":$libp2p_port" --jsonrpc ":$jsonrpc_port" \
+        --json-rpc-block-range-limit 10000000000 \
         --num-block-confirmations 2 $relayer_arg \
         --log-level DEBUG 2>&1 | tee $log_file &
     else
