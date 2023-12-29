@@ -123,7 +123,7 @@ func NewEth(
 		err      error
 	)
 
-	if secretsManager != nil {
+	if secretsManager != nil && secretsManager.HasSecret(secrets.ValidatorKey) {
 		ecdsaKey, err = polyWallet.GetEcdsaFromSecret(secretsManager)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read account ECDSA key: %w", err)
