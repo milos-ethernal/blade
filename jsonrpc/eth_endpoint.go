@@ -21,6 +21,10 @@ import (
 	ethgoWallet "github.com/umbracle/ethgo/wallet"
 )
 
+var (
+	errMissingPrivateKey = errors.New("local private key is undefined")
+)
+
 type ethTxPoolStore interface {
 	// AddTx adds a new transaction to the tx pool
 	AddTx(tx *types.Transaction) error
@@ -114,9 +118,16 @@ func NewEth(
 	chainID uint64,
 	priceLimit uint64,
 	txSigner crypto.TxSigner) (*Eth, error) {
-	ecdsaKey, err := polyWallet.GetEcdsaFromSecret(secretsManager)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read account ECDSA key: %w", err)
+	var (
+		ecdsaKey *ethgoWallet.Key
+		err      error
+	)
+
+	if secretsManager != nil {
+		ecdsaKey, err = polyWallet.GetEcdsaFromSecret(secretsManager)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read account ECDSA key: %w", err)
+		}
 	}
 
 	return &Eth{
@@ -142,6 +153,10 @@ func (e *Eth) ChainId() (interface{}, error) {
 }
 
 func (e *Eth) Accounts() (interface{}, error) {
+	if e.ecdsaKey == nil {
+		return nil, errMissingPrivateKey
+	}
+
 	return []types.Address{types.Address(e.ecdsaKey.Address())}, nil
 }
 
@@ -252,6 +267,10 @@ func (e *Eth) SendRawTransaction(buf argBytes) (interface{}, error) {
 
 // SendTransaction rejects eth_sendTransaction json-rpc call as we don't support wallet management
 func (e *Eth) SendTransaction(args *txnArgs) (interface{}, error) {
+	if e.ecdsaKey == nil {
+		return nil, errMissingPrivateKey
+	}
+
 	if err := args.setDefaults(e.priceLimit, e); err != nil {
 		return nil, err
 	}
