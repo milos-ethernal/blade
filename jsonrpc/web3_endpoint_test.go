@@ -5,26 +5,13 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/0xPolygon/polygon-edge/helper/hex"
-	"github.com/0xPolygon/polygon-edge/secrets"
 	"github.com/0xPolygon/polygon-edge/versioning"
-	"github.com/umbracle/ethgo/wallet"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestWeb3EndpointSha3(t *testing.T) {
-	ecdsaKey, err := wallet.GenerateKey()
-	require.NoError(t, err)
-
-	ecdsaKeyRaw, err := ecdsaKey.MarshallPrivateKey()
-	require.NoError(t, err)
-
-	sm := secrets.NewSecretsManagerMock()
-	sm.SetSecret(secrets.ValidatorKey, []byte(hex.EncodeToString(ecdsaKeyRaw)))
-
 	dispatcher := newTestDispatcher(t,
 		hclog.NewNullLogger(),
 		newMockStore(),
@@ -33,7 +20,7 @@ func TestWeb3EndpointSha3(t *testing.T) {
 			priceLimit:              0,
 			jsonRPCBatchLengthLimit: 20,
 			blockRangeLimit:         1000,
-			secretsManager:          sm,
+			secretsManager:          setupSecretsManagerWithKey(t),
 		})
 
 	resp, err := dispatcher.Handle([]byte(`{
@@ -54,15 +41,6 @@ func TestWeb3EndpointClientVersion(t *testing.T) {
 		chainID   = uint64(100)
 	)
 
-	ecdsaKey, err := wallet.GenerateKey()
-	require.NoError(t, err)
-
-	ecdsaKeyRaw, err := ecdsaKey.MarshallPrivateKey()
-	require.NoError(t, err)
-
-	sm := secrets.NewSecretsManagerMock()
-	sm.SetSecret(secrets.ValidatorKey, []byte(hex.EncodeToString(ecdsaKeyRaw)))
-
 	dispatcher := newTestDispatcher(t,
 		hclog.NewNullLogger(),
 		newMockStore(),
@@ -72,7 +50,7 @@ func TestWeb3EndpointClientVersion(t *testing.T) {
 			priceLimit:              0,
 			jsonRPCBatchLengthLimit: 20,
 			blockRangeLimit:         1000,
-			secretsManager:          sm,
+			secretsManager:          setupSecretsManagerWithKey(t),
 		},
 	)
 

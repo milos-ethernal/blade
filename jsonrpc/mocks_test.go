@@ -233,7 +233,8 @@ func setupSecretsManagerWithKey(t require.TestingT) *secrets.SecretsManagerMock 
 	require.NoError(t, err)
 
 	sm := secrets.NewSecretsManagerMock()
-	sm.SetSecret(secrets.ValidatorKey, []byte(hex.EncodeToString(ecdsaKeyRaw)))
+	err = sm.SetSecret(secrets.ValidatorKey, []byte(hex.EncodeToString(ecdsaKeyRaw)))
+	require.NoError(t, err)
 
 	return sm
 }

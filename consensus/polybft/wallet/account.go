@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/umbracle/ethgo/wallet"
-	ethgoWallet "github.com/umbracle/ethgo/wallet"
 
 	"github.com/0xPolygon/polygon-edge/bls"
 	"github.com/0xPolygon/polygon-edge/secrets"
@@ -15,13 +14,13 @@ import (
 
 // Account is an account for key signatures
 type Account struct {
-	Ecdsa *ethgoWallet.Key
+	Ecdsa *wallet.Key
 	Bls   *bls.PrivateKey
 }
 
 // GenerateAccount generates a new random account
 func GenerateAccount() (*Account, error) {
-	key, err := ethgoWallet.GenerateKey()
+	key, err := wallet.GenerateKey()
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate key. error: %w", err)
 	}
@@ -116,13 +115,13 @@ func (a *Account) GetEcdsaPrivateKey() (*ecdsa.PrivateKey, error) {
 }
 
 // AdaptECDSAPrivKey converts ecdsa private key from wallet.Key to ecdsa.PrivateKey instance
-func AdaptECDSAPrivKey(ecdsaKey *ethgoWallet.Key) (*ecdsa.PrivateKey, error) {
+func AdaptECDSAPrivKey(ecdsaKey *wallet.Key) (*ecdsa.PrivateKey, error) {
 	ecdsaRaw, err := ecdsaKey.MarshallPrivateKey()
 	if err != nil {
 		return nil, err
 	}
 
-	return ethgoWallet.ParsePrivateKey(ecdsaRaw)
+	return wallet.ParsePrivateKey(ecdsaRaw)
 }
 
 func (a Account) Address() types.Address {
