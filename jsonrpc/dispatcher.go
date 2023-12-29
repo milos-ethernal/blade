@@ -11,6 +11,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/0xPolygon/polygon-edge/secrets"
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/go-hclog"
 	jsonIter "github.com/json-iterator/go"
@@ -64,8 +65,9 @@ type dispatcherParams struct {
 	priceLimit              uint64
 	jsonRPCBatchLengthLimit uint64
 	blockRangeLimit         uint64
-
 	concurrentRequestsDebug uint64
+
+	secretsManager secrets.SecretsManager
 }
 
 func (dp dispatcherParams) isExceedingBatchLengthLimit(value uint64) bool {
@@ -101,6 +103,7 @@ func (d *Dispatcher) registerEndpoints(store JSONRPCStore) error {
 		d.params.chainID,
 		d.filterManager,
 		d.params.priceLimit,
+		d.params.secretsManager,
 	}
 	d.endpoints.Net = &Net{
 		store,
