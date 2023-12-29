@@ -97,14 +97,20 @@ func newDispatcher(
 }
 
 func (d *Dispatcher) registerEndpoints(store JSONRPCStore) error {
-	d.endpoints.Eth = &Eth{
+	var err error
+
+	d.endpoints.Eth, err = NewEth(
 		d.logger,
 		store,
-		d.params.chainID,
 		d.filterManager,
-		d.params.priceLimit,
 		d.params.secretsManager,
+		d.params.chainID,
+		d.params.priceLimit,
+	)
+	if err != nil {
+		return err
 	}
+
 	d.endpoints.Net = &Net{
 		store,
 		d.params.chainID,
@@ -119,8 +125,6 @@ func (d *Dispatcher) registerEndpoints(store JSONRPCStore) error {
 		store,
 	}
 	d.endpoints.Debug = NewDebug(store, d.params.concurrentRequestsDebug)
-
-	var err error
 
 	if err = d.registerService("eth", d.endpoints.Eth); err != nil {
 		return err

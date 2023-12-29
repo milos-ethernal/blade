@@ -95,12 +95,34 @@ type ethStore interface {
 
 // Eth is the eth jsonrpc endpoint
 type Eth struct {
-	logger         hclog.Logger
-	store          ethStore
-	chainID        uint64
-	filterManager  *FilterManager
-	priceLimit     uint64
-	secretsManager secrets.SecretsManager
+	logger        hclog.Logger
+	store         ethStore
+	chainID       uint64
+	filterManager *FilterManager
+	priceLimit    uint64
+	account       *wallet.Account
+}
+
+func NewEth(
+	logger hclog.Logger,
+	store ethStore,
+	filterManager *FilterManager,
+	secretsManager secrets.SecretsManager,
+	chainID uint64,
+	priceLimit uint64) (*Eth, error) {
+	account, err := wallet.NewAccountFromSecret(secretsManager)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read account data: %w", err)
+	}
+
+	return &Eth{
+		store:         store,
+		logger:        logger,
+		chainID:       chainID,
+		account:       account,
+		priceLimit:    priceLimit,
+		filterManager: filterManager,
+	}, nil
 }
 
 var (
@@ -115,13 +137,7 @@ func (e *Eth) ChainId() (interface{}, error) {
 }
 
 func (e *Eth) Accounts() (interface{}, error) {
-	// read account
-	account, err := wallet.NewAccountFromSecret(e.secretsManager)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read account data: %w", err)
-	}
-
-	return []types.Address{types.Address(wallet.NewKey(account).Address())}, nil
+	return []types.Address{types.Address(wallet.NewKey(e.account).Address())}, nil
 }
 
 func (e *Eth) Syncing() (interface{}, error) {
