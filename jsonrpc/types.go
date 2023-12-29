@@ -1,6 +1,8 @@
 package jsonrpc
 
 import (
+	"errors"
+	"fmt"
 	"math/big"
 	"strconv"
 	"strings"
@@ -382,18 +384,168 @@ func encodeToHex(b []byte) []byte {
 
 // txnArgs is the transaction argument for the rpc endpoints
 type txnArgs struct {
-	From       *types.Address
-	To         *types.Address
-	Gas        *argUint64
-	GasPrice   *argBytes
-	GasTipCap  *argBytes
-	GasFeeCap  *argBytes
-	Value      *argBytes
-	Data       *argBytes
-	Input      *argBytes
-	Nonce      *argUint64
-	Type       *argUint64
-	AccessList *types.TxAccessList
+	From                 *types.Address      `json:"from"`
+	To                   *types.Address      `json:"to"`
+	Gas                  *argUint64          `json:"gas"`
+	GasPrice             *argBytes           `json:"gasPrice"`
+	MaxFeePerGas         *argBytes           `json:"maxFeePerGas"`
+	MaxPriorityFeePerGas *argBytes           `json:"maxPriorityFeePerGas"`
+	Value                *argBytes           `json:"value"`
+	Data                 *argBytes           `json:"data"`
+	Input                *argBytes           `json:"input"`
+	Nonce                *argUint64          `json:"nonce"`
+	Type                 *argUint64          `json:"type"`
+	AccessList           *types.TxAccessList `json:"accessList,omitempty"`
+}
+
+// data retrieves the transaction calldata. Input field is preferred.
+func (args *txnArgs) data() []byte {
+	if args.Input != nil {
+		return *args.Input
+	}
+
+	if args.Data != nil {
+		return *args.Data
+	}
+
+	return nil
+}
+
+func (args *txnArgs) setDefaults(priceLimit uint64, eth *Eth) error {
+	if err := args.setFeeDefaults(priceLimit, eth.store); err != nil {
+		return err
+	}
+
+	if args.Nonce == nil {
+		args.Nonce = argUintPtr(eth.store.GetNonce(*args.From))
+	}
+
+	if args.Gas == nil {
+		// These fields are immutable during the estimation, safe to
+		// pass the pointer directly.
+		data := args.data()
+		callArgs := txnArgs{
+			From:                 args.From,
+			To:                   args.To,
+			GasPrice:             args.GasPrice,
+			MaxFeePerGas:         args.MaxFeePerGas,
+			MaxPriorityFeePerGas: args.MaxPriorityFeePerGas,
+			Value:                args.Value,
+			Data:                 argBytesPtr(data),
+		}
+
+		estimatedGas, err := eth.EstimateGas(&callArgs, nil)
+		if err != nil {
+			return err
+		}
+
+		estimatedGasUint64, ok := estimatedGas.(argUint64)
+		if !ok {
+			return errors.New("estimated gas not a uint64")
+		}
+
+		args.Gas = &estimatedGasUint64
+	}
+
+	return nil
+}
+
+// setFeeDefaults fills in default fee values for unspecified tx fields.
+func (args *txnArgs) setFeeDefaults(priceLimit uint64, store ethStore) error {
+	// If both gasPrice and at least one of the EIP-1559 fee parameters are specified, error.
+	if args.GasPrice != nil && (args.MaxFeePerGas != nil || args.MaxPriorityFeePerGas != nil) {
+		return errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
+	}
+
+	// If the tx has completely specified a fee mechanism, no default is needed.
+	// This allows users who are not yet synced past London to get defaults for
+	// other tx values. See https://github.com/ethereum/go-ethereum/pull/23274
+	// for more information.
+	eip1559ParamsSet := args.MaxFeePerGas != nil && args.MaxPriorityFeePerGas != nil
+
+	// Sanity check the EIP-1559 fee parameters if present.
+	if args.GasPrice == nil && eip1559ParamsSet {
+		maxFeePerGas := new(big.Int).SetBytes(*args.MaxFeePerGas)
+		maxPriorityFeePerGas := new(big.Int).SetBytes(*args.MaxPriorityFeePerGas)
+
+		if maxFeePerGas.Sign() == 0 {
+			return errors.New("maxFeePerGas must be non-zero")
+		}
+
+		if maxFeePerGas.Cmp(maxPriorityFeePerGas) < 0 {
+			return fmt.Errorf("maxFeePerGas (%v) < maxPriorityFeePerGas (%v)", args.MaxFeePerGas, args.MaxPriorityFeePerGas)
+		}
+
+		args.Type = argUintPtr(uint64(types.DynamicFeeTx))
+
+		return nil // No need to set anything, user already set MaxFeePerGas and MaxPriorityFeePerGas
+	}
+
+	// Sanity check the non-EIP-1559 fee parameters.
+	head := store.Header()
+	isLondon := store.GetForksInTime(head.Number).London
+
+	if args.GasPrice != nil && !eip1559ParamsSet {
+		// Zero gas-price is not allowed after London fork
+		if new(big.Int).SetBytes(*args.GasPrice).Sign() == 0 && isLondon {
+			return errors.New("gasPrice must be non-zero after london fork")
+		}
+
+		return nil // No need to set anything, user already set GasPrice
+	}
+
+	// Now attempt to fill in default value depending on whether London is active or not.
+	if isLondon {
+		// London is active, set maxPriorityFeePerGas and maxFeePerGas.
+		if err := args.setLondonFeeDefaults(head, store); err != nil {
+			return err
+		}
+	} else {
+		if args.MaxFeePerGas != nil || args.MaxPriorityFeePerGas != nil {
+			return errors.New("maxFeePerGas and maxPriorityFeePerGas are not valid before London is active")
+		}
+
+		// London not active, set gas price.
+		avgGasPrice := store.GetAvgGasPrice()
+
+		args.GasPrice = argBytesPtr(common.BigMax(new(big.Int).SetUint64(priceLimit), avgGasPrice).Bytes())
+	}
+
+	return nil
+}
+
+// setLondonFeeDefaults fills in reasonable default fee values for unspecified fields.
+func (args *txnArgs) setLondonFeeDefaults(head *types.Header, store ethStore) error {
+	// Set maxPriorityFeePerGas if it is missing.
+	if args.MaxPriorityFeePerGas == nil {
+		tip, err := store.MaxPriorityFeePerGas()
+		if err != nil {
+			return err
+		}
+
+		args.MaxPriorityFeePerGas = argBytesPtr(tip.Bytes())
+	}
+
+	// Set maxFeePerGas if it is missing.
+	if args.MaxFeePerGas == nil {
+		// Set the max fee to be 2 times larger than the previous block's base fee.
+		// The additional slack allows the tx to not become invalidated if the base
+		// fee is rising.
+		val := new(big.Int).Add(
+			new(big.Int).SetBytes(*args.MaxPriorityFeePerGas),
+			new(big.Int).Mul(new(big.Int).SetUint64(head.BaseFee), big.NewInt(2)),
+		)
+		args.MaxFeePerGas = argBytesPtr(val.Bytes())
+	}
+
+	// Both EIP-1559 fee parameters are now set; sanity check them.
+	if new(big.Int).SetBytes(*args.MaxFeePerGas).Cmp(new(big.Int).SetBytes(*args.MaxPriorityFeePerGas)) < 0 {
+		return fmt.Errorf("maxFeePerGas (%v) < maxPriorityFeePerGas (%v)", args.MaxFeePerGas, args.MaxPriorityFeePerGas)
+	}
+
+	args.Type = argUintPtr(uint64(types.DynamicFeeTx))
+
+	return nil
 }
 
 type progression struct {

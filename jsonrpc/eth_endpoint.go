@@ -251,6 +251,10 @@ func (e *Eth) SendRawTransaction(buf argBytes) (interface{}, error) {
 
 // SendTransaction rejects eth_sendTransaction json-rpc call as we don't support wallet management
 func (e *Eth) SendTransaction(args *txnArgs) (interface{}, error) {
+	if err := args.setDefaults(e.priceLimit, e); err != nil {
+		return nil, err
+	}
+
 	tx, err := DecodeTxn(args, e.store, true)
 	if err != nil {
 		return nil, err

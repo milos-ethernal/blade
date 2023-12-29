@@ -187,12 +187,12 @@ func DecodeTxn(arg *txnArgs, store nonceGetter, forceSetNonce bool) (*types.Tran
 		arg.GasPrice = argBytesPtr([]byte{})
 	}
 
-	if arg.GasTipCap == nil {
-		arg.GasTipCap = argBytesPtr([]byte{})
+	if arg.MaxPriorityFeePerGas == nil {
+		arg.MaxPriorityFeePerGas = argBytesPtr([]byte{})
 	}
 
-	if arg.GasFeeCap == nil {
-		arg.GasFeeCap = argBytesPtr([]byte{})
+	if arg.MaxFeePerGas == nil {
+		arg.MaxFeePerGas = argBytesPtr([]byte{})
 	}
 
 	var input []byte
@@ -225,8 +225,8 @@ func DecodeTxn(arg *txnArgs, store nonceGetter, forceSetNonce bool) (*types.Tran
 	case types.LegacyTxType:
 		txn.SetGasPrice(new(big.Int).SetBytes(*arg.GasPrice))
 	case types.DynamicFeeTxType:
-		txn.SetGasTipCap(new(big.Int).SetBytes(*arg.GasTipCap))
-		txn.SetGasFeeCap(new(big.Int).SetBytes(*arg.GasFeeCap))
+		txn.SetGasTipCap(new(big.Int).SetBytes(*arg.MaxPriorityFeePerGas))
+		txn.SetGasFeeCap(new(big.Int).SetBytes(*arg.MaxFeePerGas))
 	}
 
 	txn.SetFrom(*arg.From)

@@ -36,15 +36,15 @@ func TestEth_DecodeTxn(t *testing.T) {
 		{
 			name: "should be successful",
 			arg: &txnArgs{
-				From:      &addr1,
-				To:        &addr2,
-				Gas:       toArgUint64Ptr(21000),
-				GasTipCap: toArgBytesPtr(big.NewInt(10000).Bytes()),
-				GasFeeCap: toArgBytesPtr(big.NewInt(10000).Bytes()),
-				Value:     toArgBytesPtr(oneEther.Bytes()),
-				Data:      nil,
-				Nonce:     toArgUint64Ptr(0),
-				Type:      toArgUint64Ptr(uint64(types.DynamicFeeTxType)),
+				From:                 &addr1,
+				To:                   &addr2,
+				Gas:                  toArgUint64Ptr(21000),
+				MaxPriorityFeePerGas: toArgBytesPtr(big.NewInt(10000).Bytes()),
+				MaxFeePerGas:         toArgBytesPtr(big.NewInt(10000).Bytes()),
+				Value:                toArgBytesPtr(oneEther.Bytes()),
+				Data:                 nil,
+				Nonce:                toArgUint64Ptr(0),
+				Type:                 toArgUint64Ptr(uint64(types.DynamicFeeTxType)),
 			},
 			res: types.NewTx(&types.DynamicFeeTx{
 				From:      addr1,
@@ -257,16 +257,16 @@ func TestEth_TxnType(t *testing.T) {
 
 	// Setup Txn
 	args := &txnArgs{
-		From:      &addr1,
-		To:        &addr2,
-		Gas:       toArgUint64Ptr(21000),
-		GasPrice:  toArgBytesPtr(big.NewInt(10000).Bytes()),
-		GasTipCap: toArgBytesPtr(big.NewInt(10000).Bytes()),
-		GasFeeCap: toArgBytesPtr(big.NewInt(10000).Bytes()),
-		Value:     toArgBytesPtr(oneEther.Bytes()),
-		Data:      nil,
-		Nonce:     toArgUint64Ptr(0),
-		Type:      toArgUint64Ptr(uint64(types.DynamicFeeTxType)),
+		From:                 &addr1,
+		To:                   &addr2,
+		Gas:                  toArgUint64Ptr(21000),
+		GasPrice:             toArgBytesPtr(big.NewInt(10000).Bytes()),
+		MaxPriorityFeePerGas: toArgBytesPtr(big.NewInt(10000).Bytes()),
+		MaxFeePerGas:         toArgBytesPtr(big.NewInt(10000).Bytes()),
+		Value:                toArgBytesPtr(oneEther.Bytes()),
+		Data:                 nil,
+		Nonce:                toArgUint64Ptr(0),
+		Type:                 toArgUint64Ptr(uint64(types.DynamicFeeTxType)),
 	}
 
 	expectedRes := types.NewTx(&types.DynamicFeeTx{
