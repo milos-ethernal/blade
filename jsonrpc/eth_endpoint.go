@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 
 	"github.com/0xPolygon/polygon-edge/chain"
-	"github.com/0xPolygon/polygon-edge/consensus/polybft/wallet"
+	polyWallet "github.com/0xPolygon/polygon-edge/consensus/polybft/wallet"
 	"github.com/0xPolygon/polygon-edge/crypto"
 	"github.com/0xPolygon/polygon-edge/gasprice"
 	"github.com/0xPolygon/polygon-edge/helper/common"
@@ -18,6 +18,7 @@ import (
 	"github.com/0xPolygon/polygon-edge/state"
 	"github.com/0xPolygon/polygon-edge/state/runtime"
 	"github.com/0xPolygon/polygon-edge/types"
+	ethgoWallet "github.com/umbracle/ethgo/wallet"
 )
 
 type ethTxPoolStore interface {
@@ -101,7 +102,7 @@ type Eth struct {
 	chainID       uint64
 	filterManager *FilterManager
 	priceLimit    uint64
-	account       *wallet.Account
+	ecdsaKey      *ethgoWallet.Key
 	txSigner      crypto.TxSigner
 }
 
@@ -113,16 +114,16 @@ func NewEth(
 	chainID uint64,
 	priceLimit uint64,
 	txSigner crypto.TxSigner) (*Eth, error) {
-	account, err := wallet.NewAccountFromSecret(secretsManager)
+	ecdsaKey, err := polyWallet.GetEcdsaFromSecret(secretsManager)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read account data: %w", err)
+		return nil, fmt.Errorf("failed to read account ECDSA key: %w", err)
 	}
 
 	return &Eth{
 		store:         store,
 		logger:        logger,
 		chainID:       chainID,
-		account:       account,
+		ecdsaKey:      ecdsaKey,
 		priceLimit:    priceLimit,
 		filterManager: filterManager,
 		txSigner:      txSigner,
@@ -134,14 +135,12 @@ var (
 )
 
 // ChainId returns the chain id of the client
-//
-//nolint:stylecheck
 func (e *Eth) ChainId() (interface{}, error) {
 	return argUintPtr(e.chainID), nil
 }
 
 func (e *Eth) Accounts() (interface{}, error) {
-	return []types.Address{types.Address(wallet.NewKey(e.account).Address())}, nil
+	return []types.Address{types.Address(e.ecdsaKey.Address())}, nil
 }
 
 func (e *Eth) Syncing() (interface{}, error) {
@@ -260,12 +259,12 @@ func (e *Eth) SendTransaction(args *txnArgs) (interface{}, error) {
 		return nil, err
 	}
 
-	ecdsaPrivKey, err := e.account.GetEcdsaPrivateKey()
+	cryptoECDSAPrivKey, err := polyWallet.AdaptECDSAPrivKey(e.ecdsaKey)
 	if err != nil {
 		return nil, err
 	}
 
-	signedTx, err := e.txSigner.SignTx(tx, ecdsaPrivKey)
+	signedTx, err := e.txSigner.SignTx(tx, cryptoECDSAPrivKey)
 	if err != nil {
 		return nil, err
 	}

@@ -10,8 +10,11 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"
+	"github.com/umbracle/ethgo/wallet"
 
+	"github.com/0xPolygon/polygon-edge/helper/hex"
 	"github.com/0xPolygon/polygon-edge/helper/tests"
+	"github.com/0xPolygon/polygon-edge/secrets"
 	"github.com/0xPolygon/polygon-edge/versioning"
 )
 
@@ -101,14 +104,24 @@ func TestJSONRPC_handleJSONRPCRequest(t *testing.T) {
 func newTestJSONRPC(t *testing.T) (*JSONRPC, error) {
 	t.Helper()
 
+	ecdsaKey, err := wallet.GenerateKey()
+	require.NoError(t, err)
+
+	ecdsaKeyRaw, err := ecdsaKey.MarshallPrivateKey()
+	require.NoError(t, err)
+
+	sm := secrets.NewSecretsManagerMock()
+	sm.SetSecret(secrets.ValidatorKey, []byte(hex.EncodeToString(ecdsaKeyRaw)))
+
 	store := newMockStore()
 
 	port, err := tests.GetFreePort()
 	require.NoError(t, err, "Unable to fetch free port, %v", err)
 
 	config := &Config{
-		Store: store,
-		Addr:  &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: port},
+		Store:          store,
+		Addr:           &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: port},
+		SecretsManager: sm,
 	}
 
 	return NewJSONRPC(hclog.NewNullLogger(), config)

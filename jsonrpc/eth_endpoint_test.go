@@ -293,7 +293,7 @@ func newTestEthEndpoint(store testStore) *Eth {
 		chainID:       100,
 		filterManager: nil,
 		priceLimit:    0,
-		account:       nil,
+		ecdsaKey:      nil,
 	}
 }
 
@@ -304,7 +304,7 @@ func newTestEthEndpointWithPriceLimit(store testStore, priceLimit uint64) *Eth {
 		chainID:       100,
 		filterManager: nil,
 		priceLimit:    priceLimit,
-		account:       nil,
+		ecdsaKey:      nil,
 	}
 }
 
