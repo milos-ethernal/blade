@@ -10,6 +10,7 @@ import (
 
 	"github.com/0xPolygon/polygon-edge/chain"
 	"github.com/0xPolygon/polygon-edge/consensus/polybft/wallet"
+	"github.com/0xPolygon/polygon-edge/crypto"
 	"github.com/0xPolygon/polygon-edge/gasprice"
 	"github.com/0xPolygon/polygon-edge/helper/common"
 	"github.com/0xPolygon/polygon-edge/helper/progress"
@@ -101,6 +102,7 @@ type Eth struct {
 	filterManager *FilterManager
 	priceLimit    uint64
 	account       *wallet.Account
+	txSigner      crypto.TxSigner
 }
 
 func NewEth(
@@ -109,7 +111,8 @@ func NewEth(
 	filterManager *FilterManager,
 	secretsManager secrets.SecretsManager,
 	chainID uint64,
-	priceLimit uint64) (*Eth, error) {
+	priceLimit uint64,
+	txSigner crypto.TxSigner) (*Eth, error) {
 	account, err := wallet.NewAccountFromSecret(secretsManager)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read account data: %w", err)
@@ -122,6 +125,7 @@ func NewEth(
 		account:       account,
 		priceLimit:    priceLimit,
 		filterManager: filterManager,
+		txSigner:      txSigner,
 	}, nil
 }
 
@@ -246,9 +250,27 @@ func (e *Eth) SendRawTransaction(buf argBytes) (interface{}, error) {
 }
 
 // SendTransaction rejects eth_sendTransaction json-rpc call as we don't support wallet management
-func (e *Eth) SendTransaction(_ *txnArgs) (interface{}, error) {
-	return nil, fmt.Errorf("request calls to eth_sendTransaction method are not supported," +
-		" use eth_sendRawTransaction instead")
+func (e *Eth) SendTransaction(args *txnArgs) (interface{}, error) {
+	tx, err := DecodeTxn(args, e.store, true)
+	if err != nil {
+		return nil, err
+	}
+
+	ecdsaPrivKey, err := e.account.GetEcdsaPrivateKey()
+	if err != nil {
+		return nil, err
+	}
+
+	signedTx, err := e.txSigner.SignTx(tx, ecdsaPrivKey)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := e.store.AddTx(signedTx); err != nil {
+		return nil, err
+	}
+
+	return signedTx.Hash.String(), nil
 }
 
 // GetTransactionByHash returns a transaction by its hash.
@@ -490,7 +512,7 @@ func (e *Eth) Call(arg *txnArgs, filter BlockNumberOrHash, apiOverride *stateOve
 		return nil, err
 	}
 
-	transaction, err := DecodeTxn(arg, header.Number, e.store, true)
+	transaction, err := DecodeTxn(arg, e.store, true)
 	if err != nil {
 		return nil, err
 	}
@@ -545,7 +567,7 @@ func (e *Eth) EstimateGas(arg *txnArgs, rawNum *BlockNumber) (interface{}, error
 	}
 
 	// testTransaction should execute tx with nonce always set to the current expected nonce for the account
-	transaction, err := DecodeTxn(arg, header.Number, e.store, true)
+	transaction, err := DecodeTxn(arg, e.store, true)
 	if err != nil {
 		return nil, err
 	}

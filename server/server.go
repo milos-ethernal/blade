@@ -283,7 +283,7 @@ func NewServer(config *Config) (*Server, error) {
 	// compute the genesis root state
 	config.Chain.Genesis.StateRoot = genesisRoot
 
-	signer := crypto.NewSigner(config.Chain.Params.Forks.At(0), uint64(m.config.Chain.Params.ChainID))
+	txSigner := crypto.NewSigner(config.Chain.Params.Forks.At(0), uint64(m.config.Chain.Params.ChainID))
 
 	// create storage instance for blockchain
 	var db storage.Storage
@@ -311,7 +311,7 @@ func NewServer(config *Config) (*Server, error) {
 		config.Chain,
 		nil,
 		m.executor,
-		signer,
+		txSigner,
 	)
 	if err != nil {
 		return nil, err
@@ -349,7 +349,7 @@ func NewServer(config *Config) (*Server, error) {
 			return nil, err
 		}
 
-		m.txpool.SetSigner(signer)
+		m.txpool.SetSigner(txSigner)
 	}
 
 	{
@@ -383,7 +383,7 @@ func NewServer(config *Config) (*Server, error) {
 	}
 
 	// setup and start jsonrpc server
-	if err := m.setupJSONRPC(); err != nil {
+	if err := m.setupJSONRPC(txSigner); err != nil {
 		return nil, err
 	}
 
@@ -844,7 +844,7 @@ func (j *jsonRPCHub) GetSyncProgression() *progress.Progression {
 // SETUP //
 
 // setupJSONRCP sets up the JSONRPC server, using the set configuration
-func (s *Server) setupJSONRPC() error {
+func (s *Server) setupJSONRPC(txSigner crypto.TxSigner) error {
 	hub := &jsonRPCHub{
 		state:              s.state,
 		restoreProgression: s.restoreProgression,
@@ -869,6 +869,7 @@ func (s *Server) setupJSONRPC() error {
 		ConcurrentRequestsDebug:  s.config.JSONRPC.ConcurrentRequestsDebug,
 		WebSocketReadLimit:       s.config.JSONRPC.WebSocketReadLimit,
 		SecretsManager:           s.secretsManager,
+		TxSigner:                 txSigner,
 	}
 
 	srv, err := jsonrpc.NewJSONRPC(s.logger, conf)

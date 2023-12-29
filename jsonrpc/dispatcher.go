@@ -11,6 +11,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/0xPolygon/polygon-edge/crypto"
 	"github.com/0xPolygon/polygon-edge/secrets"
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/go-hclog"
@@ -68,6 +69,7 @@ type dispatcherParams struct {
 	concurrentRequestsDebug uint64
 
 	secretsManager secrets.SecretsManager
+	txSigner       crypto.TxSigner
 }
 
 func (dp dispatcherParams) isExceedingBatchLengthLimit(value uint64) bool {
@@ -106,6 +108,7 @@ func (d *Dispatcher) registerEndpoints(store JSONRPCStore) error {
 		d.params.secretsManager,
 		d.params.chainID,
 		d.params.priceLimit,
+		d.params.txSigner,
 	)
 	if err != nil {
 		return err
