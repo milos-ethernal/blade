@@ -6,7 +6,6 @@ import (
 
 	"github.com/0xPolygon/polygon-edge/chain"
 	"github.com/0xPolygon/polygon-edge/state/runtime"
-	"github.com/0xPolygon/polygon-edge/state/runtime/tracer"
 	"github.com/0xPolygon/polygon-edge/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -23,6 +22,8 @@ func newMockContract(value *big.Int, gas uint64, code []byte) *runtime.Contract 
 		code,
 	)
 }
+
+var _ runtime.Host = (*mockHost)(nil)
 
 // mockHost is a struct which meets the requirements of runtime.Host interface but throws panic in each methods
 // we don't test all opcodes in this test
@@ -160,6 +161,10 @@ func (m *mockHost) DeleteAccessListSlot(addr types.Address, slot types.Hash) {
 	m.accessList.DeleteSlot(addr, slot)
 }
 
+func (m *mockHost) ActivePrecompiles() []types.Address {
+	panic("Not implemented in tests") //nolint:gocritic
+}
+
 func TestRun(t *testing.T) {
 	t.Parallel()
 
@@ -261,8 +266,8 @@ func (m *mockTracer) CaptureState(
 	opCode int,
 	contractAddress types.Address,
 	sp int,
-	_host tracer.RuntimeHost,
-	_state tracer.VMState,
+	_host runtime.Host,
+	_state runtime.VMState,
 ) {
 	m.calls = append(m.calls, mockCall{
 		name: "CaptureState",
@@ -279,13 +284,13 @@ func (m *mockTracer) CaptureState(
 func (m *mockTracer) ExecuteState(
 	contractAddress types.Address,
 	ip uint64,
-	opcode string,
+	opcode int,
 	availableGas uint64,
 	cost uint64,
 	lastReturnData []byte,
 	depth int,
 	err error,
-	_host tracer.RuntimeHost,
+	_host runtime.Host,
 ) {
 	m.calls = append(m.calls, mockCall{
 		name: "ExecuteState",
@@ -339,7 +344,7 @@ func TestRunWithTracer(t *testing.T) {
 					args: map[string]interface{}{
 						"contractAddress": contractAddress,
 						"ip":              uint64(0),
-						"opcode":          opCodeToString[PUSH1],
+						"opcode":          OpCodeToString[PUSH1],
 						"availableGas":    uint64(5000),
 						"cost":            uint64(3),
 						"lastReturnData":  []byte{},
@@ -384,7 +389,7 @@ func TestRunWithTracer(t *testing.T) {
 					args: map[string]interface{}{
 						"contractAddress": contractAddress,
 						"ip":              uint64(0),
-						"opcode":          opCodeToString[POP],
+						"opcode":          OpCodeToString[POP],
 						"availableGas":    uint64(5000),
 						"cost":            uint64(2),
 						"lastReturnData":  []byte{},

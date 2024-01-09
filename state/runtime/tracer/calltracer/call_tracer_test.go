@@ -58,7 +58,7 @@ func TestCallTracer_CallStart(t *testing.T) {
 			input    = []byte("input")
 		)
 
-		c.CallStart(depth, from, to, callType, gas, value, input)
+		c.CallStart(depth, from, to, callType, gas, value, input, nil)
 
 		expectedCall := &Call{
 			Type:     "CALL",
@@ -105,7 +105,7 @@ func TestCallTracer_CallStart(t *testing.T) {
 		}
 		c.activeCall = parentCall
 
-		c.CallStart(depth, from, to, callType, gas, value, input)
+		c.CallStart(depth, from, to, callType, gas, value, input, nil)
 
 		expectedCall := &Call{
 			Type:     "CALL",
@@ -138,7 +138,7 @@ func TestCallTracer_CallStart(t *testing.T) {
 			gas      = uint64(100000)
 		)
 
-		c.CallStart(depth, from, to, callType, gas, nil, nil)
+		c.CallStart(depth, from, to, callType, gas, nil, nil, nil)
 
 		expectedCall := &Call{
 			Type:     "CALL",
@@ -171,7 +171,7 @@ func TestCallTracer_CallStart(t *testing.T) {
 			input    = []byte("input")
 		)
 
-		c.CallStart(depth, from, to, callType, gas, value, input)
+		c.CallStart(depth, from, to, callType, gas, value, input, nil)
 
 		expectedCall := &Call{
 			Type:     "UNKNOWN",
@@ -205,7 +205,7 @@ func TestCallTracer_CallEnd(t *testing.T) {
 			startGas: 1000,
 		}
 
-		tracer.CallEnd(1, output, nil)
+		tracer.CallEnd(1, 2000, output, nil)
 
 		require.Equal(t, uint64(0), tracer.activeGas)
 		require.Equal(t, hex.EncodeToHex(output), tracer.activeCall.Output)
@@ -221,7 +221,7 @@ func TestCallTracer_CallEnd(t *testing.T) {
 			startGas: 1000,
 		}
 
-		tracer.CallEnd(1, output, err)
+		tracer.CallEnd(1, 1000, output, err)
 
 		require.Equal(t, uint64(0), tracer.activeGas)
 		require.Equal(t, hex.EncodeToHex(output), tracer.activeCall.Output)
@@ -239,7 +239,7 @@ func TestCallTracer_CallEnd(t *testing.T) {
 			startGas: 2000,
 		}
 
-		tracer.CallEnd(1, output, nil)
+		tracer.CallEnd(1, 2000, output, nil)
 
 		require.Equal(t, uint64(0), tracer.activeGas)
 		require.Equal(t, hex.EncodeToHex(output), tracer.activeCall.Output)
@@ -255,7 +255,7 @@ func TestCallTracer_CallEnd(t *testing.T) {
 			startGas: 2000,
 		}
 
-		tracer.CallEnd(1, output, err)
+		tracer.CallEnd(1, 2000, output, err)
 
 		require.Equal(t, uint64(0), tracer.activeGas)
 		require.Equal(t, hex.EncodeToHex(output), tracer.activeCall.Output)
@@ -278,7 +278,7 @@ func TestCallTracer_CallEnd(t *testing.T) {
 			},
 		}
 
-		tracer.CallEnd(2, output, nil)
+		tracer.CallEnd(2, 1000, output, nil)
 
 		require.Equal(t, uint64(0), tracer.activeGas)
 		require.Equal(t, hex.EncodeToHex(output), tracer.activeCall.Output)

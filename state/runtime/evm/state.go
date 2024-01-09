@@ -2,6 +2,7 @@ package evm
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 
@@ -125,6 +126,10 @@ func (c *state) Halt() {
 	c.stop = true
 }
 
+func (c *state) GetContract() *runtime.Contract {
+	return c.msg
+}
+
 func (c *state) exit(err error) {
 	if err == nil {
 		return
@@ -226,15 +231,28 @@ func (c *state) Run() ([]byte, error) {
 	var (
 		vmerr error
 
-		op OpCode
+		op OpCode // curent opcode
 		ok bool
+
+		cost uint64
+
+		// copies used by tracer
+		ipCopy  uint64 // needed for the deferred tracer (program counter)
+		gasCopy uint64 // for tracer to log gas remaining before execution
+		debug   = c.host.GetTracer() != nil
 	)
 
-	for !c.stop {
-		op, ok = c.CurrentOpCode()
-		gasCopy, ipCopy := c.gas, uint64(c.ip)
+	if debug {
+		defer func() {
+			if vmerr != nil {
+				c.captureStateBre(op, ipCopy, gasCopy, cost, c.returnData)
+			}
+		}()
+	}
 
-		c.captureState(int(op))
+	for !c.stop {
+		gasCopy, cost, ipCopy = c.gas, 0, uint64(c.ip)
+		op, ok = c.CurrentOpCode()
 
 		if !ok {
 			c.Halt()
@@ -242,36 +260,41 @@ func (c *state) Run() ([]byte, error) {
 			break
 		}
 
+		if debug {
+			fmt.Println("[GOJA] CaptureState called with op code: " + OpCodeToString[op] + " and depth: " + fmt.Sprint(c.msg.Depth))
+		}
+
 		inst := dispatchTable[op]
 		if inst.inst == nil {
 			c.exit(errOpCodeNotFound)
-			c.captureExecution(op.String(), uint64(c.ip), gasCopy, 0)
 
 			break
 		}
 
 		// check if the depth of the stack is enough for the instruction
 		if c.sp < inst.stack {
+			cost = inst.gas
 			c.exit(&runtime.StackUnderflowError{StackLen: c.sp, Required: inst.stack})
-			c.captureExecution(op.String(), uint64(c.ip), gasCopy, inst.gas)
 
 			break
 		}
 
 		// consume the gas of the instruction
 		if !c.consumeGas(inst.gas) {
+			cost = inst.gas
 			c.exit(errOutOfGas)
-			c.captureExecution(op.String(), uint64(c.ip), gasCopy, inst.gas)
 
 			break
 		}
 
 		// execute the instruction
+		cost = gasCopy - inst.gas
+		if debug {
+			c.captureStateBre(op, ipCopy, gasCopy, cost, c.returnData)
+		}
+
 		inst.inst(c)
 
-		if c.host.GetTracer() != nil {
-			c.captureExecution(op.String(), ipCopy, gasCopy, gasCopy-c.gas)
-		}
 		// check if stack size exceeds the max size
 		if c.sp > stackSize {
 			c.exit(&runtime.StackOverflowError{StackLen: c.sp, Limit: stackSize})
@@ -383,6 +406,26 @@ func (c *state) CurrentOpCode() (OpCode, bool) {
 	return OpCode(c.code[c.ip]), true
 }
 
+func (c *state) captureStateBre(
+	opCode OpCode,
+	ip, gas, cost uint64,
+	returnData []byte) {
+	tracer := c.host.GetTracer()
+	tracer.CaptureStateBre(
+		int(opCode),
+		c.msg.Depth,
+		ip, gas, cost,
+		returnData,
+		&runtime.ScopeContext{
+			Memory: c.memory,
+			Stack:  c.stack,
+			Sp:     c.sp,
+		},
+		c.host,
+		c, c.err,
+	)
+}
+
 func (c *state) captureState(opCode int) {
 	tracer := c.host.GetTracer()
 	if tracer == nil {
@@ -401,10 +444,10 @@ func (c *state) captureState(opCode int) {
 }
 
 func (c *state) captureExecution(
-	opCode string,
+	opCode OpCode,
 	ip uint64,
 	gas uint64,
-	consumedGas uint64,
+	cost uint64,
 ) {
 	tracer := c.host.GetTracer()
 	if tracer == nil {
@@ -414,9 +457,9 @@ func (c *state) captureExecution(
 	tracer.ExecuteState(
 		c.msg.Address,
 		ip,
-		opCode,
+		int(opCode),
 		gas,
-		consumedGas,
+		cost,
 		c.returnData,
 		c.msg.Depth,
 		c.err,

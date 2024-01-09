@@ -5,19 +5,8 @@ import (
 	"sync"
 
 	"github.com/0xPolygon/polygon-edge/helper/hex"
-	"github.com/0xPolygon/polygon-edge/state/runtime/tracer"
+	"github.com/0xPolygon/polygon-edge/state/runtime"
 	"github.com/0xPolygon/polygon-edge/types"
-)
-
-var (
-	callTypes = map[int]string{
-		0: "CALL",
-		1: "CALLCODE",
-		2: "DELEGATECALL",
-		3: "STATICCALL",
-		4: "CREATE",
-		5: "CREATE2",
-	}
 )
 
 type Call struct {
@@ -84,12 +73,12 @@ func (c *CallTracer) TxEnd(gasLeft uint64) {
 }
 
 func (c *CallTracer) CallStart(depth int, from, to types.Address, callType int,
-	gas uint64, value *big.Int, input []byte) {
+	gas uint64, value *big.Int, input []byte, host runtime.Host) {
 	if c.cancelled() {
 		return
 	}
 
-	typ, ok := callTypes[callType]
+	typ, ok := runtime.CallTypes[callType]
 	if !ok {
 		typ = "UNKNOWN"
 	}
@@ -122,16 +111,15 @@ func (c *CallTracer) CallStart(depth int, from, to types.Address, callType int,
 	}
 }
 
-func (c *CallTracer) CallEnd(depth int, output []byte, err error) {
+func (c *CallTracer) CallEnd(depth int, totalGasUsed uint64, output []byte, err error) {
 	c.activeCall.Output = hex.EncodeToHex(output)
 
-	gasUsed := uint64(0)
-
+	gasUsedByCall := uint64(0)
 	if c.activeCall.startGas > c.activeAvailableGas {
-		gasUsed = c.activeCall.startGas - c.activeAvailableGas
+		gasUsedByCall = c.activeCall.startGas - c.activeAvailableGas
 	}
 
-	c.activeCall.GasUsed = hex.EncodeUint64(gasUsed)
+	c.activeCall.GasUsed = hex.EncodeUint64(gasUsedByCall)
 	c.activeGas = 0
 
 	if depth > 1 {
@@ -144,14 +132,37 @@ func (c *CallTracer) CallEnd(depth int, output []byte, err error) {
 }
 
 func (c *CallTracer) CaptureState(memory []byte, stack []*big.Int, opCode int,
-	contractAddress types.Address, sp int, host tracer.RuntimeHost, state tracer.VMState) {
+	contractAddress types.Address, sp int, host runtime.Host, state runtime.VMState) {
 	if c.cancelled() {
 		state.Halt()
 	}
 }
 
-func (c *CallTracer) ExecuteState(contractAddress types.Address, ip uint64, opcode string,
-	availableGas uint64, cost uint64, lastReturnData []byte, depth int, err error, host tracer.RuntimeHost) {
+func (c *CallTracer) ExecuteState(contractAddress types.Address, ip uint64, opcode int,
+	availableGas uint64, cost uint64, lastReturnData []byte, depth int, err error, host runtime.Host) {
 	c.activeGas += cost
 	c.activeAvailableGas = availableGas
 }
+
+func (t *CallTracer) CaptureStateBre(
+	opCode, depth int,
+	ip, gas, cost uint64,
+	returnData []byte,
+	scope *runtime.ScopeContext,
+	host runtime.Host,
+	state runtime.VMState,
+	err error,
+) {
+
+}
+
+func (t *CallTracer) CaptureStart(
+	from, to types.Address,
+	callType int,
+	input []byte,
+	gas uint64,
+	value *big.Int,
+	host runtime.Host) {
+}
+
+func (t *CallTracer) CaptureEnd(output []byte, gasUsed uint64, err error) {}

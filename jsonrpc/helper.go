@@ -79,22 +79,22 @@ type txLookupAndBlockGetter interface {
 }
 
 // GetTxAndBlockByTxHash returns the tx and the block including the tx by given tx hash
-func GetTxAndBlockByTxHash(txHash types.Hash, store txLookupAndBlockGetter) (*types.Transaction, *types.Block) {
+func GetTxAndBlockByTxHash(txHash types.Hash, store txLookupAndBlockGetter) (*types.Transaction, *types.Block, int) {
 	blockHash, ok := store.ReadTxLookup(txHash)
 	if !ok {
-		return nil, nil
+		return nil, nil, 0
 	}
 
 	block, ok := store.GetBlockByHash(blockHash, true)
 	if !ok {
-		return nil, nil
+		return nil, nil, 0
 	}
 
-	if txn, _ := types.FindTxByHash(block.Transactions, txHash); txn != nil {
-		return txn, block
+	if txn, index := types.FindTxByHash(block.Transactions, txHash); txn != nil {
+		return txn, block, index
 	}
 
-	return nil, nil
+	return nil, nil, 0
 }
 
 type blockGetter interface {

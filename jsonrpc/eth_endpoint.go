@@ -492,15 +492,15 @@ func (e *Eth) fillTransactionGasPrice(tx *types.Transaction) error {
 	return nil
 }
 
-type overrideAccount struct {
+type OverrideAccount struct {
 	Nonce     *argUint64                 `json:"nonce"`
 	Code      *argBytes                  `json:"code"`
-	Balance   *argUint64                 `json:"balance"`
+	Balance   *argBig                    `json:"balance"`
 	State     *map[types.Hash]types.Hash `json:"state"`
 	StateDiff *map[types.Hash]types.Hash `json:"stateDiff"`
 }
 
-func (o *overrideAccount) ToType() types.OverrideAccount {
+func (o *OverrideAccount) ToType() types.OverrideAccount {
 	res := types.OverrideAccount{}
 
 	if o.Nonce != nil {
@@ -512,7 +512,7 @@ func (o *overrideAccount) ToType() types.OverrideAccount {
 	}
 
 	if o.Balance != nil {
-		res.Balance = new(big.Int).SetUint64(*(*uint64)(o.Balance))
+		res.Balance = o.Balance.ToInt()
 	}
 
 	if o.State != nil {
@@ -527,10 +527,20 @@ func (o *overrideAccount) ToType() types.OverrideAccount {
 }
 
 // StateOverride is the collection of overridden accounts.
-type stateOverride map[types.Address]overrideAccount
+type StateOverride map[types.Address]OverrideAccount
+
+func (s *StateOverride) ToType() types.StateOverride {
+	res := types.StateOverride{}
+
+	for addr, o := range *s {
+		res[addr] = o.ToType()
+	}
+
+	return res
+}
 
 // Call executes a smart contract call using the transaction object data
-func (e *Eth) Call(arg *txnArgs, filter BlockNumberOrHash, apiOverride *stateOverride) (interface{}, error) {
+func (e *Eth) Call(arg *txnArgs, filter BlockNumberOrHash, apiOverride *StateOverride) (interface{}, error) {
 	header, err := GetHeaderFromBlockNumberOrHash(filter, e.store)
 	if err != nil {
 		return nil, err
@@ -553,10 +563,7 @@ func (e *Eth) Call(arg *txnArgs, filter BlockNumberOrHash, apiOverride *stateOve
 
 	var override types.StateOverride
 	if apiOverride != nil {
-		override = types.StateOverride{}
-		for addr, o := range *apiOverride {
-			override[addr] = o.ToType()
-		}
+		override = apiOverride.ToType()
 	}
 
 	// The return value of the execution is saved in the transition (returnValue field)

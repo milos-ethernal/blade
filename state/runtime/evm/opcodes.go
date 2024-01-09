@@ -264,7 +264,7 @@ const (
 	SELFDESTRUCT = 0xFF
 )
 
-var opCodeToString = map[OpCode]string{
+var OpCodeToString = map[OpCode]string{
 	STOP:           "STOP",
 	ADD:            "ADD",
 	MUL:            "MUL",
@@ -347,7 +347,7 @@ func opCodesToString(from, to OpCode, str string) {
 	}
 
 	for i := from; i <= to; i++ {
-		opCodeToString[i] = fmt.Sprintf("%s%d", str, c)
+		OpCodeToString[i] = fmt.Sprintf("%s%d", str, c)
 		c++
 	}
 }
@@ -364,5 +364,5 @@ func init() {
 }
 
 func (op OpCode) String() string {
-	return opCodeToString[op]
+	return OpCodeToString[op]
 }

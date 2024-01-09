@@ -35,7 +35,6 @@ import (
 	itrie "github.com/0xPolygon/polygon-edge/state/immutable-trie"
 	"github.com/0xPolygon/polygon-edge/state/runtime"
 	"github.com/0xPolygon/polygon-edge/state/runtime/addresslist"
-	"github.com/0xPolygon/polygon-edge/state/runtime/tracer"
 	"github.com/0xPolygon/polygon-edge/txpool"
 	"github.com/0xPolygon/polygon-edge/types"
 	"github.com/0xPolygon/polygon-edge/validate"
@@ -710,7 +709,7 @@ func (j *jsonRPCHub) ApplyTxn(
 // TraceBlock traces all transactions in the given block and returns all results
 func (j *jsonRPCHub) TraceBlock(
 	block *types.Block,
-	tracer tracer.Tracer,
+	tracer runtime.Tracer,
 ) ([]interface{}, error) {
 	if block.Number() == 0 {
 		return nil, errors.New("genesis block can't have transaction")
@@ -754,7 +753,7 @@ func (j *jsonRPCHub) TraceBlock(
 func (j *jsonRPCHub) TraceTxn(
 	block *types.Block,
 	targetTxHash types.Hash,
-	tracer tracer.Tracer,
+	tracer runtime.Tracer,
 ) (interface{}, error) {
 	if block.Number() == 0 {
 		return nil, errors.New("genesis block can't have transaction")
@@ -806,7 +805,8 @@ func (j *jsonRPCHub) TraceTxn(
 func (j *jsonRPCHub) TraceCall(
 	tx *types.Transaction,
 	parentHeader *types.Header,
-	tracer tracer.Tracer,
+	override types.StateOverride,
+	tracer runtime.Tracer,
 ) (interface{}, error) {
 	blockCreator, err := j.GetConsensus().GetBlockCreator(parentHeader)
 	if err != nil {

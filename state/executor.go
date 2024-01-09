@@ -16,7 +16,6 @@ import (
 	"github.com/0xPolygon/polygon-edge/state/runtime/addresslist"
 	"github.com/0xPolygon/polygon-edge/state/runtime/evm"
 	"github.com/0xPolygon/polygon-edge/state/runtime/precompiled"
-	"github.com/0xPolygon/polygon-edge/state/runtime/tracer"
 	"github.com/0xPolygon/polygon-edge/types"
 )
 
@@ -722,7 +721,11 @@ func (t *Transition) Create2(
 	address := crypto.CreateAddress(caller, t.state.GetNonce(caller))
 	contract := runtime.NewContractCreation(1, caller, caller, address, value, gas, code)
 
-	return t.applyCreate(contract, t)
+	t.captureStart(contract, evm.CREATE)
+	result := t.applyCreate(contract, t)
+	t.captureEnd(result)
+
+	return result
 }
 
 func (t *Transition) Call2(
@@ -734,7 +737,11 @@ func (t *Transition) Call2(
 ) *runtime.ExecutionResult {
 	c := runtime.NewContractCall(1, caller, caller, to, value, gas, t.state.GetCode(to), input)
 
-	return t.applyCall(c, runtime.Call, t)
+	t.captureStart(c, runtime.Call)
+	result := t.applyCall(c, runtime.Call, t)
+	t.captureEnd(result)
+
+	return result
 }
 
 func (t *Transition) run(contract *runtime.Contract, host runtime.Host) *runtime.ExecutionResult {
@@ -969,7 +976,7 @@ func (t *Transition) applyCreate(c *runtime.Contract, host runtime.Host) *runtim
 		return result
 	}
 
-	if t.config.EIP158 && len(result.ReturnValue) > SpuriousDragonMaxCodeSize {
+	if t.config.EIP158 && len(result.ReturnValue) > TxPoolMaxInitCodeSize {
 		// Contract size exceeds 'SpuriousDragon' size limit
 		if err := t.RevertToSnapshot(snapshot); err != nil {
 			return &runtime.ExecutionResult{
@@ -1170,7 +1177,7 @@ func (t *Transition) SetNonPayable(nonPayable bool) {
 }
 
 // SetTracer sets tracer to the context in order to enable it
-func (t *Transition) SetTracer(tracer tracer.Tracer) {
+func (t *Transition) SetTracer(tracer runtime.Tracer) {
 	t.ctx.Tracer = tracer
 }
 
@@ -1181,6 +1188,10 @@ func (t *Transition) GetTracer() runtime.VMTracer {
 
 func (t *Transition) GetRefund() uint64 {
 	return t.state.GetRefund()
+}
+
+func (t *Transition) ActivePrecompiles() []types.Address {
+	return t.precompiles.ActivePrecompiles(&t.config)
 }
 
 func TransactionGasCost(msg *types.Transaction, isHomestead, isIstanbul bool) (uint64, error) {
@@ -1291,6 +1302,35 @@ func checkAndProcessStateTx(msg *types.Transaction) error {
 }
 
 // captureCallStart calls CallStart in Tracer if context has the tracer
+func (t *Transition) captureStart(c *runtime.Contract, callType runtime.CallType) {
+	if t.ctx.Tracer == nil {
+		return
+	}
+
+	t.ctx.Tracer.CaptureStart(
+		c.Caller,
+		c.Address,
+		int(callType),
+		c.Input,
+		c.Gas,
+		c.Value,
+		t,
+	)
+}
+
+func (t *Transition) captureEnd(result *runtime.ExecutionResult) {
+	if t.ctx.Tracer == nil {
+		return
+	}
+
+	t.ctx.Tracer.CaptureEnd(
+		result.ReturnValue,
+		result.GasUsed,
+		result.Err,
+	)
+}
+
+// captureCallStart calls CallStart in Tracer if context has the tracer
 func (t *Transition) captureCallStart(c *runtime.Contract, callType runtime.CallType) {
 	if t.ctx.Tracer == nil {
 		return
@@ -1304,6 +1344,7 @@ func (t *Transition) captureCallStart(c *runtime.Contract, callType runtime.Call
 		c.Gas,
 		c.Value,
 		c.Input,
+		t,
 	)
 }
 
@@ -1315,6 +1356,7 @@ func (t *Transition) captureCallEnd(c *runtime.Contract, result *runtime.Executi
 
 	t.ctx.Tracer.CallEnd(
 		c.Depth,
+		result.GasUsed,
 		result.ReturnValue,
 		result.Err,
 	)

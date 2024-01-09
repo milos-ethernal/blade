@@ -277,6 +277,11 @@ func argBigPtr(b *big.Int) *argBig {
 	return &v
 }
 
+// ToInt converts b to a big.Int.
+func (a *argBig) ToInt() *big.Int {
+	return (*big.Int)(a)
+}
+
 func (a *argBig) UnmarshalText(input []byte) error {
 	buf, err := decodeToHex(input)
 	if err != nil {

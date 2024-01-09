@@ -9,7 +9,6 @@ import (
 	"github.com/0xPolygon/polygon-edge/helper/hex"
 	"github.com/0xPolygon/polygon-edge/state/runtime"
 	"github.com/0xPolygon/polygon-edge/state/runtime/evm"
-	"github.com/0xPolygon/polygon-edge/state/runtime/tracer"
 	"github.com/0xPolygon/polygon-edge/types"
 )
 
@@ -113,11 +112,13 @@ func (t *StructTracer) CallStart(
 	gas uint64,
 	value *big.Int,
 	input []byte,
+	host runtime.Host,
 ) {
 }
 
 func (t *StructTracer) CallEnd(
 	depth int,
+	gasUsed uint64,
 	output []byte,
 	err error,
 ) {
@@ -133,8 +134,8 @@ func (t *StructTracer) CaptureState(
 	opCode int,
 	contractAddress types.Address,
 	sp int,
-	host tracer.RuntimeHost,
-	state tracer.VMState,
+	host runtime.Host,
+	state runtime.VMState,
 ) {
 	if t.cancelled() {
 		state.Halt()
@@ -199,7 +200,7 @@ func (t *StructTracer) captureStorage(
 	opCode int,
 	contractAddress types.Address,
 	sp int,
-	host tracer.RuntimeHost,
+	host runtime.Host,
 ) {
 	if !t.Config.EnableStorage {
 		return
@@ -237,16 +238,39 @@ func (t *StructTracer) captureStorage(
 	}
 }
 
+func (t *StructTracer) CaptureStateBre(
+	opCode, depth int,
+	ip, gas, cost uint64,
+	returnData []byte,
+	scope *runtime.ScopeContext,
+	host runtime.Host,
+	state runtime.VMState,
+	err error,
+) {
+
+}
+
+func (t *StructTracer) CaptureStart(
+	from, to types.Address,
+	callType int,
+	input []byte,
+	gas uint64,
+	value *big.Int,
+	host runtime.Host) {
+}
+
+func (t *StructTracer) CaptureEnd(output []byte, gasUsed uint64, err error) {}
+
 func (t *StructTracer) ExecuteState(
 	contractAddress types.Address,
 	ip uint64,
-	opCode string,
+	opCode int,
 	availableGas uint64,
 	cost uint64,
 	lastReturnData []byte,
 	depth int,
 	err error,
-	host tracer.RuntimeHost,
+	host runtime.Host,
 ) {
 	var (
 		errStr     string
@@ -254,7 +278,8 @@ func (t *StructTracer) ExecuteState(
 		stack      []string
 		returnData string
 		storage    map[string]string
-		isCallOp   bool = opCode == evm.OpCode(evm.CALL).String() || opCode == evm.OpCode(evm.STATICCALL).String()
+		opc             = evm.OpCodeToString[evm.OpCode(opCode)]
+		isCallOp   bool = opc == evm.OpCode(evm.CALL).String() || opc == evm.OpCode(evm.STATICCALL).String()
 	)
 
 	if t.Config.EnableMemory {
@@ -311,7 +336,7 @@ func (t *StructTracer) ExecuteState(
 			t.logs,
 			StructLog{
 				Pc:            ip,
-				Op:            opCode,
+				Op:            opc,
 				Gas:           availableGas,
 				GasCost:       cost,
 				Memory:        memory,

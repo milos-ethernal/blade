@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/0xPolygon/polygon-edge/chain"
 	"github.com/0xPolygon/polygon-edge/helper/hex"
 	"github.com/0xPolygon/polygon-edge/state/runtime"
 	"github.com/0xPolygon/polygon-edge/state/runtime/evm"
-	"github.com/0xPolygon/polygon-edge/state/runtime/tracer"
 	"github.com/0xPolygon/polygon-edge/types"
 )
 
@@ -22,6 +22,8 @@ var (
 	testEmptyConfig = Config{}
 )
 
+var _ runtime.VMState = (*mockState)(nil)
+
 type mockState struct {
 	halted bool
 }
@@ -30,9 +32,105 @@ func (m *mockState) Halt() {
 	m.halted = true
 }
 
+func (m *mockState) GetContract() *runtime.Contract {
+	return nil
+}
+
+var _ runtime.Host = (*mockHost)(nil)
+
 type mockHost struct {
 	getRefundFn    func() uint64
 	getStorageFunc func(types.Address, types.Hash) types.Hash
+}
+
+// AccountExists implements runtime.Host.
+func (*mockHost) AccountExists(addr types.Address) bool {
+	panic("unimplemented")
+}
+
+// ActivePrecompiles implements runtime.Host.
+func (*mockHost) ActivePrecompiles() []types.Address {
+	panic("unimplemented")
+}
+
+// Callx implements runtime.Host.
+func (*mockHost) Callx(*runtime.Contract, runtime.Host) *runtime.ExecutionResult {
+	panic("unimplemented")
+}
+
+// EmitLog implements runtime.Host.
+func (*mockHost) EmitLog(addr types.Address, topics []types.Hash, data []byte) {
+	panic("unimplemented")
+}
+
+// Empty implements runtime.Host.
+func (*mockHost) Empty(addr types.Address) bool {
+	panic("unimplemented")
+}
+
+// GetBalance implements runtime.Host.
+func (*mockHost) GetBalance(addr types.Address) *big.Int {
+	panic("unimplemented")
+}
+
+// GetBlockHash implements runtime.Host.
+func (*mockHost) GetBlockHash(number int64) types.Hash {
+	panic("unimplemented")
+}
+
+// GetCode implements runtime.Host.
+func (*mockHost) GetCode(addr types.Address) []byte {
+	panic("unimplemented")
+}
+
+// GetCodeHash implements runtime.Host.
+func (*mockHost) GetCodeHash(addr types.Address) types.Hash {
+	panic("unimplemented")
+}
+
+// GetCodeSize implements runtime.Host.
+func (*mockHost) GetCodeSize(addr types.Address) int {
+	panic("unimplemented")
+}
+
+// GetNonce implements runtime.Host.
+func (*mockHost) GetNonce(addr types.Address) uint64 {
+	panic("unimplemented")
+}
+
+// GetTracer implements runtime.Host.
+func (*mockHost) GetTracer() runtime.VMTracer {
+	panic("unimplemented")
+}
+
+// GetTxContext implements runtime.Host.
+func (*mockHost) GetTxContext() runtime.TxContext {
+	panic("unimplemented")
+}
+
+// Selfdestruct implements runtime.Host.
+func (*mockHost) Selfdestruct(addr types.Address, beneficiary types.Address) {
+	panic("unimplemented")
+}
+
+// SetNonPayable implements runtime.Host.
+func (*mockHost) SetNonPayable(nonPayable bool) {
+	panic("unimplemented")
+}
+
+// SetState implements runtime.Host.
+func (*mockHost) SetState(addr types.Address, key types.Hash, value types.Hash) {
+	panic("unimplemented")
+}
+
+// SetStorage implements runtime.Host.
+func (*mockHost) SetStorage(addr types.Address, key types.Hash, value types.Hash, config *chain.ForksInTime) runtime.StorageStatus {
+	panic("unimplemented")
+}
+
+// Transfer implements runtime.Host.
+func (*mockHost) Transfer(from types.Address, to types.Address, amount *big.Int) error {
+	panic("unimplemented")
 }
 
 func (m *mockHost) GetRefund() uint64 {
@@ -243,6 +341,7 @@ func TestStructTracerCallStart(t *testing.T) {
 		1024,
 		new(big.Int).SetUint64(10000),
 		[]byte("input"),
+		nil,
 	)
 
 	// make sure the method updates nothing
@@ -308,7 +407,7 @@ func TestStructTracerCallEnd(t *testing.T) {
 
 			tracer := NewStructTracer(testEmptyConfig)
 
-			tracer.CallEnd(test.depth, test.output, test.err)
+			tracer.CallEnd(test.depth, 1000, test.output, test.err)
 
 			assert.Equal(
 				t,
@@ -344,12 +443,12 @@ func TestStructTracerCaptureState(t *testing.T) {
 		opCode          int
 		contractAddress types.Address
 		sp              int
-		host            tracer.RuntimeHost
-		vmState         tracer.VMState
+		host            runtime.Host
+		vmState         runtime.VMState
 
 		// expected state
 		expectedTracer  *StructTracer
-		expectedVMState tracer.VMState
+		expectedVMState runtime.VMState
 	}{
 		{
 			name: "should capture memory",
@@ -610,7 +709,7 @@ func TestStructTracerExecuteState(t *testing.T) {
 	var (
 		contractAddress = types.StringToAddress("1")
 		ip              = uint64(2)
-		opCode          = "ADD"
+		opCode          = evm.ADD
 		availableGas    = uint64(1000)
 		cost            = uint64(100)
 		lastReturnData  = []byte("return data")
@@ -642,13 +741,13 @@ func TestStructTracerExecuteState(t *testing.T) {
 		// input
 		contractAddress types.Address
 		ip              uint64
-		opCode          string
+		opCode          int
 		availableGas    uint64
 		cost            uint64
 		lastReturnData  []byte
 		depth           int
 		err             error
-		host            tracer.RuntimeHost
+		host            runtime.Host
 
 		// expected result
 		expected []StructLog
@@ -696,7 +795,7 @@ func TestStructTracerExecuteState(t *testing.T) {
 			expected: []StructLog{
 				{
 					Pc:            ip,
-					Op:            opCode,
+					Op:            evm.OpCodeToString[evm.OpCode(opCode)],
 					Gas:           availableGas,
 					GasCost:       cost,
 					Memory:        nil,
@@ -734,7 +833,7 @@ func TestStructTracerExecuteState(t *testing.T) {
 			expected: []StructLog{
 				{
 					Pc:            ip,
-					Op:            opCode,
+					Op:            evm.OpCodeToString[evm.OpCode(opCode)],
 					Gas:           availableGas,
 					GasCost:       cost,
 					Memory:        []string{hex.EncodeToString(memory[0])},
@@ -775,7 +874,7 @@ func TestStructTracerExecuteState(t *testing.T) {
 			expected: []StructLog{
 				{
 					Pc:      ip,
-					Op:      opCode,
+					Op:      evm.OpCodeToString[evm.OpCode(opCode)],
 					Gas:     availableGas,
 					GasCost: cost,
 					Memory:  nil,
@@ -838,7 +937,7 @@ func TestStructTracerExecuteState(t *testing.T) {
 			expected: []StructLog{
 				{
 					Pc:         ip,
-					Op:         opCode,
+					Op:         evm.OpCodeToString[evm.OpCode(opCode)],
 					Gas:        availableGas,
 					GasCost:    cost,
 					Memory:     nil,

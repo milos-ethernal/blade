@@ -2,13 +2,17 @@ package jsonrpc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+	"strings"
 	"time"
 
 	"github.com/0xPolygon/polygon-edge/helper/hex"
-	"github.com/0xPolygon/polygon-edge/state/runtime/tracer"
+	"github.com/0xPolygon/polygon-edge/state/runtime"
 	"github.com/0xPolygon/polygon-edge/state/runtime/tracer/calltracer"
+	js "github.com/0xPolygon/polygon-edge/state/runtime/tracer/jstracer"
 	"github.com/0xPolygon/polygon-edge/state/runtime/tracer/structtracer"
 	"github.com/0xPolygon/polygon-edge/types"
 )
@@ -16,7 +20,7 @@ import (
 const callTracerName = "callTracer"
 
 var (
-	defaultTraceTimeout = 5 * time.Second
+	defaultTraceTimeout = 5 * time.Minute
 
 	// ErrExecutionTimeout indicates the execution was terminated due to timeout
 	ErrExecutionTimeout = errors.New("execution timeout")
@@ -24,6 +28,8 @@ var (
 	ErrTraceGenesisBlock = errors.New("genesis is not traceable")
 	// ErrNoConfig is an error returns when config is empty
 	ErrNoConfig = errors.New("missing config object")
+
+	jsKeywords = []string{"function", "var", "let", "const", "if", "else", "for", "while", "switch", "return"}
 )
 
 type debugBlockchainStore interface {
@@ -43,13 +49,13 @@ type debugBlockchainStore interface {
 	GetBlockByNumber(num uint64, full bool) (*types.Block, bool)
 
 	// TraceBlock traces all transactions in the given block
-	TraceBlock(*types.Block, tracer.Tracer) ([]interface{}, error)
+	TraceBlock(*types.Block, runtime.Tracer) ([]interface{}, error)
 
 	// TraceTxn traces a transaction in the block, associated with the given hash
-	TraceTxn(*types.Block, types.Hash, tracer.Tracer) (interface{}, error)
+	TraceTxn(*types.Block, types.Hash, runtime.Tracer) (interface{}, error)
 
 	// TraceCall traces a single call at the point when the given header is mined
-	TraceCall(*types.Transaction, *types.Header, tracer.Tracer) (interface{}, error)
+	TraceCall(*types.Transaction, *types.Header, types.StateOverride, runtime.Tracer) (interface{}, error)
 }
 
 type debugTxPoolStore interface {
@@ -79,14 +85,64 @@ func NewDebug(store debugStore, requestsPerSecond uint64) *Debug {
 	}
 }
 
+// BlockOverrides is a set of header fields to override.
+type BlockOverrides struct {
+	Number     *argBig
+	Difficulty *argBig
+	Time       *argUint64
+	GasLimit   *argUint64
+	Coinbase   *types.Address
+	BaseFee    *argBig
+}
+
+// Apply overrides the given header fields into the given block context.
+func (bo *BlockOverrides) Apply(header *types.Header) {
+	if bo == nil {
+		return
+	}
+
+	if bo.Number != nil {
+		header.Number = bo.Number.ToInt().Uint64()
+	}
+
+	if bo.Difficulty != nil {
+		header.Difficulty = bo.Difficulty.ToInt().Uint64()
+	}
+
+	if bo.Time != nil {
+		header.Timestamp = uint64(*bo.Time)
+	}
+
+	if bo.GasLimit != nil {
+		header.GasLimit = uint64(*bo.GasLimit)
+	}
+
+	if bo.Coinbase != nil {
+		header.Miner = bo.Coinbase.Bytes()
+	}
+
+	if bo.BaseFee != nil {
+		header.BaseFee = bo.BaseFee.ToInt().Uint64()
+	}
+}
+
 type TraceConfig struct {
-	EnableMemory      bool    `json:"enableMemory"`
-	DisableStack      bool    `json:"disableStack"`
-	DisableStorage    bool    `json:"disableStorage"`
-	EnableReturnData  bool    `json:"enableReturnData"`
-	DisableStructLogs bool    `json:"disableStructLogs"`
-	Timeout           *string `json:"timeout"`
-	Tracer            string  `json:"tracer"`
+	EnableMemory      bool            `json:"enableMemory"`
+	DisableStack      bool            `json:"disableStack"`
+	DisableStorage    bool            `json:"disableStorage"`
+	EnableReturnData  bool            `json:"enableReturnData"`
+	DisableStructLogs bool            `json:"disableStructLogs"`
+	Timeout           *string         `json:"timeout"`
+	Tracer            string          `json:"tracer"`
+	TracerConfig      json.RawMessage `json:"tracerConfig"` // Config specific to given tracer
+}
+
+// TraceCallConfig is the config for traceCall API. It holds one more
+// field to override the state for tracing.
+type TraceCallConfig struct {
+	TraceConfig
+	StateOverrides *StateOverride  `json:"stateOverrides"`
+	BlockOverrides *BlockOverrides `json:"blockOverrides"`
 }
 
 func (d *Debug) TraceBlockByNumber(
@@ -157,7 +213,7 @@ func (d *Debug) TraceTransaction(
 	return d.throttling.AttemptRequest(
 		context.Background(),
 		func() (interface{}, error) {
-			tx, block := GetTxAndBlockByTxHash(txHash, d.store)
+			tx, block, txIndex := GetTxAndBlockByTxHash(txHash, d.store)
 			if tx == nil {
 				return nil, fmt.Errorf("tx %s not found", txHash.String())
 			}
@@ -166,7 +222,14 @@ func (d *Debug) TraceTransaction(
 				return nil, ErrTraceGenesisBlock
 			}
 
-			tracer, cancel, err := newTracer(config)
+			txCtx := &runtime.TracerContext{
+				BlockHash:   block.Hash(),
+				BlockNumber: new(big.Int).SetUint64(block.Number()),
+				TxIndex:     txIndex,
+				TxHash:      tx.Hash,
+			}
+
+			tracer, cancel, err := newTracer(config, txCtx)
 			if err != nil {
 				return nil, err
 			}
@@ -181,7 +244,7 @@ func (d *Debug) TraceTransaction(
 func (d *Debug) TraceCall(
 	arg *txnArgs,
 	filter BlockNumberOrHash,
-	config *TraceConfig,
+	config *TraceCallConfig,
 ) (interface{}, error) {
 	return d.throttling.AttemptRequest(
 		context.Background(),
@@ -190,6 +253,10 @@ func (d *Debug) TraceCall(
 			if err != nil {
 				return nil, ErrHeaderNotFound
 			}
+
+			header = header.Copy()
+			header.BaseFee = 0
+			config.BlockOverrides.Apply(header)
 
 			tx, err := DecodeTxn(arg, d.store, true)
 			if err != nil {
@@ -201,14 +268,19 @@ func (d *Debug) TraceCall(
 				tx.SetGas(header.GasLimit)
 			}
 
-			tracer, cancel, err := newTracer(config)
+			tracer, cancel, err := newTracer(&config.TraceConfig, new(runtime.TracerContext))
 			if err != nil {
 				return nil, err
 			}
 
 			defer cancel()
 
-			return d.store.TraceCall(tx, header, tracer)
+			var override types.StateOverride
+			if config.StateOverrides != nil {
+				override = config.StateOverrides.ToType()
+			}
+
+			return d.store.TraceCall(tx, header, override, tracer)
 		},
 	)
 }
@@ -221,7 +293,7 @@ func (d *Debug) traceBlock(
 		return nil, ErrTraceGenesisBlock
 	}
 
-	tracer, cancel, err := newTracer(config)
+	tracer, cancel, err := newTracer(config, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -232,13 +304,14 @@ func (d *Debug) traceBlock(
 }
 
 // newTracer creates new tracer by config
-func newTracer(config *TraceConfig) (
-	tracer.Tracer,
+func newTracer(config *TraceConfig, tracerCtx *runtime.TracerContext) (
+	runtime.Tracer,
 	context.CancelFunc,
 	error,
 ) {
 	var (
 		timeout = defaultTraceTimeout
+		tracer  runtime.Tracer
 		err     error
 	)
 
@@ -252,10 +325,10 @@ func newTracer(config *TraceConfig) (
 		}
 	}
 
-	var tracer tracer.Tracer
-
 	if config.Tracer == callTracerName {
 		tracer = &calltracer.CallTracer{}
+	} else if isJavaScriptCode(config.Tracer) {
+		tracer, err = js.NewJsTracer(config.Tracer, tracerCtx, config.TracerConfig)
 	} else {
 		tracer = structtracer.NewStructTracer(structtracer.Config{
 			EnableMemory:     config.EnableMemory && !config.DisableStructLogs,
@@ -278,4 +351,17 @@ func newTracer(config *TraceConfig) (
 
 	// cancellation of context is done by caller
 	return tracer, cancel, nil
+}
+
+// isJavaScriptCode checks if the given string contains any JavaScript keywords.
+// It iterates over a list of JavaScript keywords and checks if any of them are present in the string.
+// If a keyword is found, it returns true; otherwise, it returns false.
+func isJavaScriptCode(s string) bool {
+	for _, keyword := range jsKeywords {
+		if strings.Contains(s, keyword) {
+			return true
+		}
+	}
+
+	return false
 }

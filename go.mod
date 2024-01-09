@@ -13,6 +13,12 @@ require (
 	github.com/docker/docker v24.0.9+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/envoyproxy/protoc-gen-validate v1.0.4
+	github.com/aws/aws-sdk-go v1.49.7
+	github.com/btcsuite/btcd v0.22.1
+	github.com/docker/docker v24.0.7+incompatible
+	github.com/docker/go-connections v0.4.0
+	github.com/dop251/goja v0.0.0-20231027120936-b396bb4c349d
+	github.com/envoyproxy/protoc-gen-validate v1.0.2
 	github.com/golang/protobuf v1.5.3
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.1
@@ -226,4 +232,7 @@ require (
 	gotest.tools/v3 v3.0.2 // indirect
 	inet.af/netaddr v0.0.0-20230525184311-b8eac61e914a // indirect
 	lukechampine.com/blake3 v1.2.1 // indirect
+	nhooyr.io/websocket v1.8.7 // indirect
+	github.com/dlclark/regexp2 v1.7.0 // indirect
+	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 )

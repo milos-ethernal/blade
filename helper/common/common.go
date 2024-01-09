@@ -385,6 +385,17 @@ func EncodeBytesToUint64(b []byte) uint64 {
 	return binary.BigEndian.Uint64(b)
 }
 
+// CopyBytes returns an exact copy of the provided bytes.
+func CopyBytes(b []byte) (copiedBytes []byte) {
+	if b == nil {
+		return nil
+	}
+	copiedBytes = make([]byte, len(b))
+	copy(copiedBytes, b)
+
+	return
+}
+
 // Generic object pool implementation intended to be used in single-threaded
 // manner and avoid synchronization overhead. It could be probably additionally
 // be improved by using circular buffer as oposed to stack.

@@ -146,6 +146,9 @@ func (m *mockHostF) ContainsAccessListSlot(addr types.Address, slot types.Hash) 
 }
 func (m *mockHostF) DeleteAccessListAddress(addr types.Address)               {}
 func (m *mockHostF) DeleteAccessListSlot(addr types.Address, slot types.Hash) {}
+func (m *mockHostF) ActivePrecompiles() []types.Address {
+	return nil
+}
 
 func FuzzTestEVM(f *testing.F) {
 	seed := []byte{

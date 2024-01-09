@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/0xPolygon/polygon-edge/chain"
-	"github.com/0xPolygon/polygon-edge/state/runtime/tracer"
 	"github.com/0xPolygon/polygon-edge/types"
 )
 
@@ -20,7 +19,7 @@ type TxContext struct {
 	GasLimit     int64
 	ChainID      int64
 	Difficulty   types.Hash
-	Tracer       tracer.Tracer
+	Tracer       Tracer
 	NonPayable   bool
 	BaseFee      *big.Int
 	BurnContract types.Address
@@ -86,6 +85,7 @@ type Host interface {
 	ContainsAccessListSlot(addr types.Address, slot types.Hash) (bool, bool)
 	DeleteAccessListAddress(addr types.Address)
 	DeleteAccessListSlot(addr types.Address, slot types.Hash)
+	ActivePrecompiles() []types.Address
 }
 
 type VMTracer interface {
@@ -95,19 +95,28 @@ type VMTracer interface {
 		opCode int,
 		contractAddress types.Address,
 		sp int,
-		host tracer.RuntimeHost,
-		state tracer.VMState,
+		host Host,
+		state VMState,
 	)
 	ExecuteState(
 		contractAddress types.Address,
 		ip uint64,
-		opcode string,
+		opcode int,
 		availableGas uint64,
 		cost uint64,
 		lastReturnData []byte,
 		depth int,
 		err error,
-		host tracer.RuntimeHost,
+		host Host,
+	)
+	CaptureStateBre(
+		opCode, depth int,
+		ip, gas, cost uint64,
+		returnData []byte,
+		scope *ScopeContext,
+		host Host,
+		state VMState,
+		err error,
 	)
 }
 

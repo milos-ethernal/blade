@@ -225,3 +225,7 @@ func (d dummyHost) GetTracer() runtime.VMTracer {
 func (d dummyHost) GetRefund() uint64 {
 	return 0
 }
+
+func (d dummyHost) ActivePrecompiles() []types.Address {
+	return nil
+}

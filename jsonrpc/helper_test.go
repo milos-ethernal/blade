@@ -28,7 +28,9 @@ func createTestTransaction(hash types.Hash) *types.Transaction {
 
 func createTestHeader(height uint64, setterFn func(h *types.Header)) *types.Header {
 	h := &types.Header{
-		Number: height,
+		Number:    height,
+		Miner:     []byte{},
+		ExtraData: []byte{},
 	}
 
 	if setterFn != nil {
@@ -409,7 +411,7 @@ func TestGetTxAndBlockByTxHash(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			tx, block := GetTxAndBlockByTxHash(test.txHash, test.store)
+			tx, block, _ := GetTxAndBlockByTxHash(test.txHash, test.store)
 
 			assert.Equal(t, test.tx, tx)
 			assert.Equal(t, test.block, block)

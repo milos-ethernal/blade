@@ -370,14 +370,14 @@ func TestOverrideAccount_ToType(t *testing.T) {
 
 	nonce := uint64(10)
 	code := []byte("SC code")
-	balance := uint64(10000)
+	balance := new(big.Int).SetUint64(10000)
 	state := map[types.Hash]types.Hash{types.StringToHash("1"): types.StringToHash("2")}
 	stateDiff := map[types.Hash]types.Hash{types.StringToHash("3"): types.StringToHash("4")}
 
-	overrideAcc := &overrideAccount{
+	overrideAcc := &OverrideAccount{
 		Nonce:     toArgUint64Ptr(nonce),
 		Code:      toArgBytesPtr(code),
-		Balance:   toArgUint64Ptr(balance),
+		Balance:   argBigPtr(balance),
 		State:     &state,
 		StateDiff: &stateDiff,
 	}
@@ -386,7 +386,7 @@ func TestOverrideAccount_ToType(t *testing.T) {
 	require.NotNil(t, convertedAcc)
 	require.Equal(t, nonce, *convertedAcc.Nonce)
 	require.Equal(t, code, convertedAcc.Code)
-	require.Equal(t, new(big.Int).SetUint64(balance), convertedAcc.Balance)
+	require.Equal(t, balance, convertedAcc.Balance)
 	require.Equal(t, state, convertedAcc.State)
 	require.Equal(t, stateDiff, convertedAcc.StateDiff)
 }

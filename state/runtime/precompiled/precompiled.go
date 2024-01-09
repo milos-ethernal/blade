@@ -75,7 +75,7 @@ func (p *Precompiled) setupContracts() {
 	p.register(contracts.NativeTransferPrecompile.String(), &nativeTransfer{})
 
 	// Console precompile
-	// p.register(contracts.ConsolePrecompile.String(), &console{})
+	p.register(contracts.ConsolePrecompile.String(), &console{})
 
 	// BLS aggregated signatures verification precompile
 	p.register(contracts.BLSAggSigsVerificationPrecompile.String(), &blsAggSignsVerification{})
@@ -98,6 +98,22 @@ var (
 	eight = types.StringToAddress("8")
 	nine  = types.StringToAddress("9")
 )
+
+// ActivePrecompiles returns a list of active precompiled contract addresses based on the provided configuration.
+// It checks if each contract address in the precompiled contracts map can be run with the given configuration.
+// If a contract address can be run, it is added to the list of active precompiles.
+// The list of active precompiled contract addresses is returned.
+func (p *Precompiled) ActivePrecompiles(config *chain.ForksInTime) []types.Address {
+	var precompiles []types.Address
+
+	for addr := range p.contracts {
+		if p.CanRun(&runtime.Contract{CodeAddress: addr}, nil, config) {
+			precompiles = append(precompiles, addr)
+		}
+	}
+
+	return precompiles
+}
 
 // CanRun implements the runtime interface
 func (p *Precompiled) CanRun(c *runtime.Contract, _ runtime.Host, config *chain.ForksInTime) bool {
