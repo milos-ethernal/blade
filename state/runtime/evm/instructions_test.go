@@ -1,7 +1,6 @@
 package evm
 
 import (
-	"math"
 	"math/big"
 	"testing"
 
@@ -1487,6 +1486,7 @@ func Test_opSload(t *testing.T) {
 			op:   SLOAD,
 			contract: &runtime.Contract{
 				Address: address1,
+				Journal: &runtime.Journal{},
 			},
 			config: &chain.ForksInTime{
 				Berlin: true,
@@ -1531,6 +1531,7 @@ func Test_opSload(t *testing.T) {
 			op:   SLOAD,
 			contract: &runtime.Contract{
 				Address: address1,
+				Journal: &runtime.Journal{},
 			},
 			config: &chain.ForksInTime{
 				Berlin: true,
@@ -1579,6 +1580,7 @@ func Test_opSload(t *testing.T) {
 			op:   SLOAD,
 			contract: &runtime.Contract{
 				Address: address1,
+				Journal: &runtime.Journal{},
 			},
 			config: &chain.ForksInTime{
 				Berlin:   false,
@@ -1630,13 +1632,13 @@ func Test_opSload(t *testing.T) {
 			s.memory = tt.initState.memory
 			s.config = tt.config
 			s.host = tt.mockHost
-			s.accessList = tt.initState.accessList
+			tt.contract.AccessList = tt.initState.accessList
 			opSload(s)
 			assert.Equal(t, tt.resultState.gas, s.gas, "gas in state after execution is not correct")
 			assert.Equal(t, tt.resultState.sp, s.sp, "sp in state after execution is not correct")
 			assert.Equal(t, tt.resultState.stack, s.stack, "stack in state after execution is not correct")
 			assert.Equal(t, tt.resultState.memory, s.memory, "memory in state after execution is not correct")
-			assert.Equal(t, tt.resultState.accessList, s.accessList, "accesslist in state after execution is not correct")
+			assert.Equal(t, tt.resultState.accessList, tt.contract.AccessList, "accesslist in state after execution is not correct")
 			assert.Equal(t, tt.resultState.stop, s.stop, "stop in state after execution is not correct")
 			assert.Equal(t, tt.resultState.err, s.err, "err in state after execution is not correct")
 		})
@@ -2251,7 +2253,6 @@ func Test_opReturnDataCopy(t *testing.T) {
 			state.tmp = nil
 			state.bitmap = bitmap{}
 			state.ret = nil
-			state.accessList = nil
 			state.currentConsumedGas = 0
 
 			opReturnDataCopy(state)
@@ -2278,7 +2279,9 @@ func Test_opCall(t *testing.T) {
 			name: "should not copy result into memory if outSize is 0",
 			op:   STATICCALL,
 			contract: &runtime.Contract{
-				Static: true,
+				Static:     true,
+				Journal:    &runtime.Journal{},
+				AccessList: runtime.NewAccessList(),
 			},
 			config: allEnabledForks,
 			initState: &state{
@@ -2292,8 +2295,7 @@ func Test_opCall(t *testing.T) {
 					big.NewInt(0x00), // address
 					big.NewInt(0x00), // initialGas
 				},
-				memory:     []byte{0x01},
-				accessList: runtime.NewAccessList(),
+				memory: []byte{0x01},
 			},
 			resultState: &state{
 				memory: []byte{0x01},
@@ -2390,7 +2392,6 @@ func Test_opCall(t *testing.T) {
 			state.memory = test.initState.memory
 			state.config = &test.config
 			state.host = test.mockHost
-			state.accessList = test.initState.accessList
 
 			opCall(test.op)(state)
 
