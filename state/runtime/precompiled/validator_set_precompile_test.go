@@ -77,18 +77,20 @@ func Test_ValidatorSetPrecompile_run_IsValidator(t *testing.T) {
 }
 
 func Test_ValidatorSetPrecompile_run_HasQuorum(t *testing.T) {
-	addrGood := [][]byte{
-		types.StringToAddress("a").Bytes(),
-		types.StringToAddress("b").Bytes(),
-		types.StringToAddress("d").Bytes(),
+	dummy := [32]byte{}
+	dummy[31] = 32
+	addrGood := []types.Address{
+		types.StringToAddress("a"),
+		types.StringToAddress("b"),
+		types.StringToAddress("d"),
 	}
-	addrBad1 := [][]byte{
-		types.StringToAddress("a").Bytes(),
+	addrBad1 := []types.Address{
+		types.StringToAddress("a"),
 	}
-	addrBad2 := [][]byte{
-		types.StringToAddress("a").Bytes(),
-		types.StringToAddress("0").Bytes(),
-		types.StringToAddress("d").Bytes(),
+	addrBad2 := []types.Address{
+		types.StringToAddress("a"),
+		types.StringToAddress("0"),
+		types.StringToAddress("d"),
 	}
 	host := newDummyHost(t)
 	host.context = &runtime.TxContext{
@@ -103,24 +105,15 @@ func Test_ValidatorSetPrecompile_run_HasQuorum(t *testing.T) {
 		backend: backendMock,
 	}
 
-	bytes, err := hasQuorumAbiType.Encode(addrGood)
-	require.NoError(t, err)
-
-	v, err := p.run(bytes, types.Address{}, host)
+	v, err := p.run(abiEncodeAddresses(addrGood), types.Address{}, host)
 	require.NoError(t, err)
 	assert.Equal(t, abiBoolTrue, v)
 
-	bytes, err = hasQuorumAbiType.Encode(addrBad1)
-	require.NoError(t, err)
-
-	v, err = p.run(bytes, types.Address{}, host)
+	v, err = p.run(abiEncodeAddresses(addrBad1), types.Address{}, host)
 	require.NoError(t, err)
 	assert.Equal(t, abiBoolFalse, v)
 
-	bytes, err = hasQuorumAbiType.Encode(addrBad2)
-	require.NoError(t, err)
-
-	v, err = p.run(bytes, types.Address{}, host)
+	v, err = p.run(abiEncodeAddresses(addrBad2), types.Address{}, host)
 	require.NoError(t, err)
 	assert.Equal(t, abiBoolFalse, v)
 }

@@ -17,7 +17,6 @@ import (
 
 	"github.com/0xPolygon/polygon-edge/command"
 	"github.com/0xPolygon/polygon-edge/command/genesis"
-	"github.com/0xPolygon/polygon-edge/command/validator/helper"
 	validatorHelper "github.com/0xPolygon/polygon-edge/command/validator/helper"
 	"github.com/0xPolygon/polygon-edge/consensus/polybft"
 	"github.com/0xPolygon/polygon-edge/consensus/polybft/contractsapi"
@@ -844,7 +843,7 @@ func TestE2E_TestValidatorSetPrecompile(t *testing.T) {
 	validatorKeys := make([]*wallet.Key, len(validatorAddrs))
 
 	for i, s := range cluster.Servers {
-		voterAcc, err := helper.GetAccountFromDir(s.DataDir())
+		voterAcc, err := validatorHelper.GetAccountFromDir(s.DataDir())
 		require.NoError(t, err)
 
 		validatorKeys[i] = voterAcc.Ecdsa

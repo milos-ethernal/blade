@@ -1,20 +1,19 @@
 package precompiled
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
+	"fmt"
 
 	"github.com/0xPolygon/polygon-edge/chain"
 	"github.com/0xPolygon/polygon-edge/consensus/polybft/validator"
 	"github.com/0xPolygon/polygon-edge/state/runtime"
 	"github.com/0xPolygon/polygon-edge/types"
 	"github.com/hashicorp/go-hclog"
-	"github.com/umbracle/ethgo"
-	"github.com/umbracle/ethgo/abi"
 )
 
 var (
-	hasQuorumAbiType = abi.MustNewType("address[]")
-
 	errValidatorSetPrecompileNotEnabled = errors.New("validator set precompile is not enabled")
 )
 
@@ -54,14 +53,9 @@ func (c *validatorSetPrecompile) run(input []byte, caller types.Address, host ru
 		return abiBoolFalse, nil
 	}
 
-	rawData, err := abi.Decode(hasQuorumAbiType, input)
+	addresses, err := abiDecodeAddresses(input)
 	if err != nil {
 		return nil, err
-	}
-
-	addresses, ok := rawData.([]ethgo.Address)
-	if !ok {
-		return nil, errBLSVerifyAggSignsInputs
 	}
 
 	validatorSet, err := createValidatorSet(host, c.backend)
@@ -69,9 +63,15 @@ func (c *validatorSetPrecompile) run(input []byte, caller types.Address, host ru
 		return nil, err
 	}
 
+	fmt.Println("QUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU")
 	signers := make(map[types.Address]struct{}, len(addresses))
 	for _, x := range addresses {
-		signers[types.Address(x)] = struct{}{}
+		signers[x] = struct{}{}
+		fmt.Println("HAS QUOORUM", x)
+	}
+
+	for _, x := range validatorSet.Accounts() {
+		fmt.Println(x.Address.String(), x.VotingPower)
 	}
 
 	if validatorSet.HasQuorum(uint64(host.GetTxContext().Number), signers) {
@@ -98,4 +98,46 @@ func createValidatorSet(host runtime.Host, backend ValidatoSetPrecompileBackend)
 	}
 
 	return validator.NewValidatorSet(accounts, hclog.NewNullLogger()), nil
+}
+
+func abiDecodeAddresses(input []byte) ([]types.Address, error) {
+	if len(input) < 32 || len(input)%32 != 0 {
+		return nil, runtime.ErrInvalidInputData
+	}
+
+	// abi.encode encodes addresses[] with slice of bytes where initial 31 bytes
+	// are set to 0, and 32nd is 32
+	// then goes length of slice (32 bytes)
+	// then each address is 32 bytes
+	dummy := [32]byte{}
+	dummy[31] = 32
+
+	if bytes.Equal(dummy[:], input[:32]) {
+		input = input[32:]
+	}
+
+	size := binary.BigEndian.Uint32(input[28:32])
+	if uint32(len(input)) != size*32+32 {
+		return nil, runtime.ErrInvalidInputData
+	}
+
+	res := make([]types.Address, size)
+	for i, offset := 0, 32; offset < len(input); i, offset = i+1, offset+32 {
+		res[i] = types.Address(input[offset+12 : offset+32])
+	}
+
+	return res, nil
+}
+
+func abiEncodeAddresses(addrs []types.Address) []byte {
+	res := make([]byte, len(addrs)*32+64)
+	res[31] = 32
+
+	binary.BigEndian.PutUint32(res[32+28:64], uint32(len(addrs)))
+
+	for i, a := range addrs {
+		copy(res[64+i*32+12:64+(i+1)*32], a.Bytes())
+	}
+
+	return res
 }
