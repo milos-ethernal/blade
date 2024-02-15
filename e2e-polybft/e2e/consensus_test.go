@@ -874,7 +874,7 @@ func TestE2E_TestValidatorSetPrecompile(t *testing.T) {
 		response, err := txRelayer.Call(ethgo.ZeroAddress, validatorSetPrecompileTestAddr, hasQuorumFnBytes)
 		require.NoError(t, err)
 
-		return response == "true"
+		return response == "0x0000000000000000000000000000000000000000000000000000000000000001"
 	}
 
 	sendIncTx := func(validatorID int) {

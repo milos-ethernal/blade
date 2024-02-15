@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 
 	"github.com/0xPolygon/polygon-edge/chain"
 	"github.com/0xPolygon/polygon-edge/consensus/polybft/validator"
@@ -37,9 +36,15 @@ func (c *validatorSetPrecompile) gas(input []byte, _ *chain.ForksInTime) uint64 
 // Input must be ABI encoded: address or (address[])
 // Output could be an error or ABI encoded "bool" value
 func (c *validatorSetPrecompile) run(input []byte, caller types.Address, host runtime.Host) ([]byte, error) {
+	// if its payable tx we need to look for validator in previous block
+	blockNumber := uint64(host.GetTxContext().Number)
+	if !host.GetTxContext().NonPayable {
+		blockNumber--
+	}
+
 	// isValidator case
 	if len(input) == 32 {
-		validatorSet, err := createValidatorSet(host, c.backend) // we are calling validators for previous block
+		validatorSet, err := createValidatorSet(blockNumber, c.backend) // we are calling validators for previous block
 		if err != nil {
 			return nil, err
 		}
@@ -58,38 +63,26 @@ func (c *validatorSetPrecompile) run(input []byte, caller types.Address, host ru
 		return nil, err
 	}
 
-	validatorSet, err := createValidatorSet(host, c.backend)
+	validatorSet, err := createValidatorSet(blockNumber, c.backend)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("QUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU")
 	signers := make(map[types.Address]struct{}, len(addresses))
 	for _, x := range addresses {
 		signers[x] = struct{}{}
-		fmt.Println("HAS QUOORUM", x)
 	}
 
-	for _, x := range validatorSet.Accounts() {
-		fmt.Println(x.Address.String(), x.VotingPower)
-	}
-
-	if validatorSet.HasQuorum(uint64(host.GetTxContext().Number), signers) {
+	if validatorSet.HasQuorum(blockNumber, signers) {
 		return abiBoolTrue, nil
 	}
 
 	return abiBoolFalse, nil
 }
 
-func createValidatorSet(host runtime.Host, backend ValidatoSetPrecompileBackend) (validator.ValidatorSet, error) {
+func createValidatorSet(blockNumber uint64, backend ValidatoSetPrecompileBackend) (validator.ValidatorSet, error) {
 	if backend == nil {
 		return nil, errValidatorSetPrecompileNotEnabled
-	}
-
-	// if its payable tx we need to look for validator in previous block
-	blockNumber := uint64(host.GetTxContext().Number)
-	if !host.GetTxContext().NonPayable {
-		blockNumber--
 	}
 
 	accounts, err := backend.GetValidatorsForBlock(blockNumber)

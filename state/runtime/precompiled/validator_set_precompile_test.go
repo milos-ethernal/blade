@@ -52,7 +52,7 @@ func Test_ValidatorSetPrecompile_run_GetValidatorsForBlockError(t *testing.T) {
 }
 
 func Test_ValidatorSetPrecompile_run_IsValidator(t *testing.T) {
-	addrGood := types.StringToAddress("a")
+	accounts := getDummyAccountSet()
 	addrBad := types.StringToAddress("1")
 	host := newDummyHost(t)
 	host.context = &runtime.TxContext{
@@ -61,36 +61,37 @@ func Test_ValidatorSetPrecompile_run_IsValidator(t *testing.T) {
 	}
 	backendMock := &validatorSetBackendMock{}
 
-	backendMock.On("GetValidatorsForBlock", uint64(host.context.Number-1)).Return(getDummyAccountSet(), error(nil))
+	backendMock.On("GetValidatorsForBlock", uint64(host.context.Number-1)).Return(accounts, error(nil))
 
 	p := &validatorSetPrecompile{
 		backend: backendMock,
 	}
 
-	v, err := p.run(common.PadLeftOrTrim(addrGood.Bytes(), 32), types.Address{}, host)
-	require.NoError(t, err)
-	assert.Equal(t, abiBoolTrue, v)
+	for _, x := range accounts {
+		v, err := p.run(common.PadLeftOrTrim(x.Address[:], 32), types.Address{}, host)
+		require.NoError(t, err)
+		assert.Equal(t, abiBoolTrue, v)
+	}
 
-	v, err = p.run(common.PadLeftOrTrim(addrBad.Bytes(), 32), types.Address{}, host)
+	v, err := p.run(common.PadLeftOrTrim(addrBad.Bytes(), 32), types.Address{}, host)
 	require.NoError(t, err)
 	assert.Equal(t, abiBoolFalse, v)
 }
 
 func Test_ValidatorSetPrecompile_run_HasQuorum(t *testing.T) {
-	dummy := [32]byte{}
-	dummy[31] = 32
+	accounts := getDummyAccountSet()
 	addrGood := []types.Address{
-		types.StringToAddress("a"),
-		types.StringToAddress("b"),
-		types.StringToAddress("d"),
+		accounts[0].Address,
+		accounts[1].Address,
+		accounts[3].Address,
 	}
 	addrBad1 := []types.Address{
-		types.StringToAddress("a"),
+		accounts[0].Address,
 	}
 	addrBad2 := []types.Address{
-		types.StringToAddress("a"),
+		accounts[0].Address,
 		types.StringToAddress("0"),
-		types.StringToAddress("d"),
+		accounts[3].Address,
 	}
 	host := newDummyHost(t)
 	host.context = &runtime.TxContext{
@@ -99,7 +100,7 @@ func Test_ValidatorSetPrecompile_run_HasQuorum(t *testing.T) {
 	}
 	backendMock := &validatorSetBackendMock{}
 
-	backendMock.On("GetValidatorsForBlock", uint64(host.context.Number)).Return(getDummyAccountSet(), error(nil))
+	backendMock.On("GetValidatorsForBlock", uint64(host.context.Number)).Return(accounts, error(nil))
 
 	p := &validatorSetPrecompile{
 		backend: backendMock,
@@ -129,25 +130,27 @@ func (m *validatorSetBackendMock) GetValidatorsForBlock(blockNumber uint64) (val
 }
 
 func getDummyAccountSet() validator.AccountSet {
+	v, _ := new(big.Int).SetString("1000000000000000000000", 10)
+
 	return validator.AccountSet{
 		&validator.ValidatorMetadata{
-			Address:     types.StringToAddress("a"),
-			VotingPower: new(big.Int).SetUint64(1),
+			Address:     types.StringToAddress("0xd29f66FEd147B26925DE44Ba468670e921012B6f"),
+			VotingPower: new(big.Int).Set(v),
 			IsActive:    true,
 		},
 		&validator.ValidatorMetadata{
-			Address:     types.StringToAddress("b"),
-			VotingPower: new(big.Int).SetUint64(1),
+			Address:     types.StringToAddress("0x72aB93bbbc38E90d962dcbf41d973f8C434978e1"),
+			VotingPower: new(big.Int).Set(v),
 			IsActive:    true,
 		},
 		&validator.ValidatorMetadata{
-			Address:     types.StringToAddress("c"),
-			VotingPower: new(big.Int).SetUint64(1),
+			Address:     types.StringToAddress("0x3b5c82720835d3BAA42eB34E3e4acEE6042A830D"),
+			VotingPower: new(big.Int).Set(v),
 			IsActive:    true,
 		},
 		&validator.ValidatorMetadata{
-			Address:     types.StringToAddress("d"),
-			VotingPower: new(big.Int).SetUint64(1),
+			Address:     types.StringToAddress("0x87558A1abE10E41a328086474c93449e8A1F8f4e"),
+			VotingPower: new(big.Int).Set(v),
 			IsActive:    true,
 		},
 	}
