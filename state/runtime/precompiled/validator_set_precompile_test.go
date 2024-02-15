@@ -36,11 +36,12 @@ func Test_ValidatorSetPrecompile_run_GetValidatorsForBlockError(t *testing.T) {
 	addr := types.StringToAddress("aaff")
 	host := newDummyHost(t)
 	host.context = &runtime.TxContext{
-		Number: 100,
+		Number:     100,
+		NonPayable: true,
 	}
 	backendMock := &validatorSetBackendMock{}
 
-	backendMock.On("GetValidatorsForBlock", uint64(100)).Return((validator.AccountSet)(nil), desiredErr)
+	backendMock.On("GetValidatorsForBlock", uint64(host.context.Number)).Return((validator.AccountSet)(nil), desiredErr)
 
 	p := &validatorSetPrecompile{
 		backend: backendMock,
@@ -55,11 +56,12 @@ func Test_ValidatorSetPrecompile_run_IsValidator(t *testing.T) {
 	addrBad := types.StringToAddress("1")
 	host := newDummyHost(t)
 	host.context = &runtime.TxContext{
-		Number: 100,
+		Number:     100,
+		NonPayable: false,
 	}
 	backendMock := &validatorSetBackendMock{}
 
-	backendMock.On("GetValidatorsForBlock", uint64(100)).Return(getDummyAccountSet(), error(nil))
+	backendMock.On("GetValidatorsForBlock", uint64(host.context.Number-1)).Return(getDummyAccountSet(), error(nil))
 
 	p := &validatorSetPrecompile{
 		backend: backendMock,
@@ -90,11 +92,12 @@ func Test_ValidatorSetPrecompile_run_HasQuorum(t *testing.T) {
 	}
 	host := newDummyHost(t)
 	host.context = &runtime.TxContext{
-		Number: 200,
+		Number:     200,
+		NonPayable: true,
 	}
 	backendMock := &validatorSetBackendMock{}
 
-	backendMock.On("GetValidatorsForBlock", uint64(200)).Return(getDummyAccountSet(), error(nil))
+	backendMock.On("GetValidatorsForBlock", uint64(host.context.Number)).Return(getDummyAccountSet(), error(nil))
 
 	p := &validatorSetPrecompile{
 		backend: backendMock,
