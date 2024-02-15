@@ -40,7 +40,7 @@ func (c *validatorSetPrecompile) gas(input []byte, _ *chain.ForksInTime) uint64 
 func (c *validatorSetPrecompile) run(input []byte, caller types.Address, host runtime.Host) ([]byte, error) {
 	// isValidator case
 	if len(input) == 32 {
-		validatorSet, err := createValidatorSet(host, c.backend)
+		validatorSet, err := createValidatorSet(host, c.backend) // we are calling validators for previous block
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +86,13 @@ func createValidatorSet(host runtime.Host, backend ValidatoSetPrecompileBackend)
 		return nil, errValidatorSetPrecompileNotEnabled
 	}
 
-	accounts, err := backend.GetValidatorsForBlock(uint64(host.GetTxContext().Number))
+	// if its payable tx we need to look for validator in previous block
+	blockNumber := uint64(host.GetTxContext().Number)
+	if !host.GetTxContext().NonPayable {
+		blockNumber--
+	}
+
+	accounts, err := backend.GetValidatorsForBlock(blockNumber)
 	if err != nil {
 		return nil, err
 	}
