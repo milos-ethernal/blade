@@ -17,6 +17,7 @@ import (
 
 	"github.com/0xPolygon/polygon-edge/command"
 	"github.com/0xPolygon/polygon-edge/command/genesis"
+	"github.com/0xPolygon/polygon-edge/command/validator/helper"
 	validatorHelper "github.com/0xPolygon/polygon-edge/command/validator/helper"
 	"github.com/0xPolygon/polygon-edge/consensus/polybft"
 	"github.com/0xPolygon/polygon-edge/consensus/polybft/contractsapi"
@@ -828,22 +829,31 @@ func TestE2E_TestValidatorSetPrecompile(t *testing.T) {
 	admin, err := wallet.GenerateKey()
 	require.NoError(t, err)
 
-	validators := []types.Address(nil)
+	validatorAddrs := []types.Address(nil)
 	adminAddr := types.Address(admin.Address())
 
 	cluster := framework.NewTestCluster(t, 4,
 		framework.WithBladeAdmin(adminAddr.String()),
 		framework.WithSecretsCallback(func(addrs []types.Address, _ *framework.TestClusterConfig) {
-			validators = addrs
+			validatorAddrs = addrs
 		}))
 	defer cluster.Stop()
 
 	cluster.WaitForReady(t)
 
+	validatorKeys := make([]*wallet.Key, len(validatorAddrs))
+
+	for i, s := range cluster.Servers {
+		voterAcc, err := helper.GetAccountFromDir(s.DataDir())
+		require.NoError(t, err)
+
+		validatorKeys[i] = voterAcc.Ecdsa
+	}
+
 	txRelayer, err := txrelayer.NewTxRelayer(txrelayer.WithClient(cluster.Servers[0].JSONRPC()))
 	require.NoError(t, err)
 
-	// deploy Wrapper contract
+	// deploy contract
 	receipt, err := txRelayer.SendTransaction(
 		&ethgo.Transaction{
 			To:    nil,
@@ -868,7 +878,7 @@ func TestE2E_TestValidatorSetPrecompile(t *testing.T) {
 		return response == "true"
 	}
 
-	sendIncTx := func(addr types.Address) {
+	sendIncTx := func(validatorID int) {
 		t.Helper()
 
 		incFn := contractsapi.TestValidatorSetPrecompile.Abi.GetMethod("inc")
@@ -877,27 +887,27 @@ func TestE2E_TestValidatorSetPrecompile(t *testing.T) {
 		require.NoError(t, err)
 
 		txn := &ethgo.Transaction{
-			From:  ethgo.Address(addr),
+			From:  ethgo.Address(validatorAddrs[validatorID]),
 			To:    &validatorSetPrecompileTestAddr,
 			Input: incFnBytes,
 		}
 
-		receipt, err = txRelayer.SendTransaction(txn, admin)
+		receipt, err = txRelayer.SendTransaction(txn, validatorKeys[validatorID])
 		require.NoError(t, err)
 		require.Equal(t, uint64(types.ReceiptSuccess), receipt.Status)
 	}
 
 	require.False(t, hasQuorum())
 
-	sendIncTx(validators[0])
+	sendIncTx(0)
 	require.False(t, hasQuorum())
 
-	sendIncTx(validators[1])
+	sendIncTx(1)
 	require.False(t, hasQuorum())
 
-	sendIncTx(validators[1])
+	sendIncTx(1)
 	require.False(t, hasQuorum())
 
-	sendIncTx(validators[3])
+	sendIncTx(3)
 	require.True(t, hasQuorum())
 }

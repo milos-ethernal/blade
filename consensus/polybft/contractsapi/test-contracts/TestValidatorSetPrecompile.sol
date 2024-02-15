@@ -7,15 +7,15 @@ contract TestValidatorSetPrecompile {
     address public constant VALIDATOR_SET_PRECOMPILE = 0x0000000000000000000000000000000000002040;
     uint256 public constant VALIDATOR_SET_PRECOMPILE_GAS = 150000;
 
-    mapping(address => bool) public voteMap;
-    address[] public votes;
+    mapping(address => bool) voteMap;
+    address[] votes;
 
     modifier onlyValidator() {
         (bool callSuccess, bytes memory returnData) = VALIDATOR_SET_PRECOMPILE.staticcall{
             gas: VALIDATOR_SET_PRECOMPILE_GAS
         }(abi.encode(msg.sender));
-        bool isValidator = callSuccess && abi.decode(returnData, (bool));
-        require(isValidator, "validator only");
+        bool state = abi.decode(returnData, (bool));
+        require(callSuccess && state, "validator only");
         _;
     }
 
@@ -30,6 +30,7 @@ contract TestValidatorSetPrecompile {
         (bool callSuccess, bytes memory returnData) = VALIDATOR_SET_PRECOMPILE.staticcall{
             gas: VALIDATOR_SET_PRECOMPILE_GAS
         }(abi.encode(votes));
-        return callSuccess && abi.decode(returnData, (bool));
+        bool state = abi.decode(returnData, (bool));
+        return callSuccess && state;
     }
 }
