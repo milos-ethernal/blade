@@ -18,12 +18,12 @@ var (
 	errValidatorSetPrecompileNotEnabled = errors.New("validator set precompile is not enabled")
 )
 
-type ValidatoSetPrecompiledBackend interface {
+type ValidatoSetPrecompileBackend interface {
 	GetValidatorsForBlock(blockNumber uint64) (validator.AccountSet, error)
 }
 
 type validatorSetPrecompile struct {
-	backend ValidatoSetPrecompiledBackend
+	backend ValidatoSetPrecompileBackend
 }
 
 // gas returns the gas required to execute the pre-compiled contract
@@ -81,7 +81,7 @@ func (c *validatorSetPrecompile) run(input []byte, caller types.Address, host ru
 	return abiBoolFalse, nil
 }
 
-func createValidatorSet(host runtime.Host, backend ValidatoSetPrecompiledBackend) (validator.ValidatorSet, error) {
+func createValidatorSet(host runtime.Host, backend ValidatoSetPrecompileBackend) (validator.ValidatorSet, error) {
 	if backend == nil {
 		return nil, errValidatorSetPrecompileNotEnabled
 	}

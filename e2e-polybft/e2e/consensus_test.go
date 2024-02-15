@@ -823,3 +823,81 @@ func TestE2E_Deploy_Nested_Contract(t *testing.T) {
 
 	require.Equal(t, numberToPersist, parsedResponse)
 }
+
+func TestE2E_TestValidatorSetPrecompile(t *testing.T) {
+	admin, err := wallet.GenerateKey()
+	require.NoError(t, err)
+
+	validators := []types.Address(nil)
+	adminAddr := types.Address(admin.Address())
+
+	cluster := framework.NewTestCluster(t, 4,
+		framework.WithBladeAdmin(adminAddr.String()),
+		framework.WithSecretsCallback(func(addrs []types.Address, _ *framework.TestClusterConfig) {
+			validators = addrs
+		}))
+	defer cluster.Stop()
+
+	cluster.WaitForReady(t)
+
+	txRelayer, err := txrelayer.NewTxRelayer(txrelayer.WithClient(cluster.Servers[0].JSONRPC()))
+	require.NoError(t, err)
+
+	// deploy Wrapper contract
+	receipt, err := txRelayer.SendTransaction(
+		&ethgo.Transaction{
+			To:    nil,
+			Input: contractsapi.TestValidatorSetPrecompile.Bytecode,
+		},
+		admin)
+	require.NoError(t, err)
+
+	validatorSetPrecompileTestAddr := receipt.ContractAddress
+
+	hasQuorum := func() bool {
+		t.Helper()
+
+		hasQuorumFn := contractsapi.TestValidatorSetPrecompile.Abi.GetMethod("hasQuorum")
+
+		hasQuorumFnBytes, err := hasQuorumFn.Encode([]interface{}{})
+		require.NoError(t, err)
+
+		response, err := txRelayer.Call(ethgo.ZeroAddress, validatorSetPrecompileTestAddr, hasQuorumFnBytes)
+		require.NoError(t, err)
+
+		return response == "true"
+	}
+
+	sendIncTx := func(addr types.Address) {
+		t.Helper()
+
+		incFn := contractsapi.TestValidatorSetPrecompile.Abi.GetMethod("inc")
+
+		incFnBytes, err := incFn.Encode([]interface{}{})
+		require.NoError(t, err)
+
+		txn := &ethgo.Transaction{
+			From:  ethgo.Address(addr),
+			To:    &validatorSetPrecompileTestAddr,
+			Input: incFnBytes,
+		}
+
+		receipt, err = txRelayer.SendTransaction(txn, admin)
+		require.NoError(t, err)
+		require.Equal(t, uint64(types.ReceiptSuccess), receipt.Status)
+	}
+
+	require.False(t, hasQuorum())
+
+	sendIncTx(validators[0])
+	require.False(t, hasQuorum())
+
+	sendIncTx(validators[1])
+	require.False(t, hasQuorum())
+
+	sendIncTx(validators[1])
+	require.False(t, hasQuorum())
+
+	sendIncTx(validators[3])
+	require.True(t, hasQuorum())
+}

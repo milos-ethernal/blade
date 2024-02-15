@@ -47,8 +47,8 @@ type Executor struct {
 	GenesisPostHook func(*Transition) error
 
 	// this value should be set if we want to enable validator set precompile
-	// NOTE that this precompile wont be enabled for WriteGenesis
-	validatorSetBackend precompiled.ValidatoSetPrecompiledBackend
+	// note that this precompile WONT be enabled for WriteGenesis
+	validatorSetBackend precompiled.ValidatoSetPrecompileBackend
 }
 
 // NewExecutor creates a new executor
@@ -239,7 +239,7 @@ func (e *Executor) BeginTxn(
 	return t, nil
 }
 
-func (e *Executor) SetValidatorSetBackend(validatorSetBackend precompiled.ValidatoSetPrecompiledBackend) {
+func (e *Executor) SetValidatorSetBackend(validatorSetBackend precompiled.ValidatoSetPrecompileBackend) {
 	e.validatorSetBackend = validatorSetBackend
 }
 
