@@ -12,6 +12,8 @@ import (
 	"github.com/hashicorp/go-hclog"
 )
 
+const addrOffset = 32 - types.AddressLength
+
 var (
 	errValidatorSetPrecompileNotEnabled = errors.New("validator set precompile is not enabled")
 )
@@ -116,7 +118,7 @@ func abiDecodeAddresses(input []byte) ([]types.Address, error) {
 
 	res := make([]types.Address, size)
 	for i, offset := 0, 32; offset < len(input); i, offset = i+1, offset+32 {
-		res[i] = types.Address(input[offset+12 : offset+32])
+		res[i] = types.Address(input[offset+addrOffset : offset+32])
 	}
 
 	return res, nil
@@ -126,10 +128,13 @@ func abiEncodeAddresses(addrs []types.Address) []byte {
 	res := make([]byte, len(addrs)*32+64)
 	res[31] = 32
 
-	binary.BigEndian.PutUint32(res[32+28:64], uint32(len(addrs)))
+	binary.BigEndian.PutUint32(res[60:64], uint32(len(addrs))) // 60 == 32 + 28
 
-	for i, a := range addrs {
-		copy(res[64+i*32+12:64+(i+1)*32], a.Bytes())
+	offset := 64
+
+	for _, addr := range addrs {
+		copy(res[offset+addrOffset:offset+32], addr.Bytes())
+		offset += 32
 	}
 
 	return res

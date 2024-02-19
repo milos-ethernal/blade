@@ -4,8 +4,8 @@
 pragma solidity ^0.8.0;
 
 contract TestValidatorSetPrecompile {
-    address public constant VALIDATOR_SET_PRECOMPILE = 0x0000000000000000000000000000000000002040;
-    uint256 public constant VALIDATOR_SET_PRECOMPILE_GAS = 150000;
+    address constant VALIDATOR_SET_PRECOMPILE = 0x0000000000000000000000000000000000002040;
+    uint256 constant VALIDATOR_SET_PRECOMPILE_GAS = 150000;
 
     mapping(address => bool) voteMap;
     address[] votes;
@@ -14,8 +14,7 @@ contract TestValidatorSetPrecompile {
         (bool callSuccess, bytes memory returnData) = VALIDATOR_SET_PRECOMPILE.staticcall{
             gas: VALIDATOR_SET_PRECOMPILE_GAS
         }(abi.encode(msg.sender));
-        bool state = abi.decode(returnData, (bool));
-        require(callSuccess && state, "validator only");
+        require(callSuccess && abi.decode(returnData, (bool)), "validator");
         _;
     }
 
@@ -30,7 +29,6 @@ contract TestValidatorSetPrecompile {
         (bool callSuccess, bytes memory returnData) = VALIDATOR_SET_PRECOMPILE.staticcall{
             gas: VALIDATOR_SET_PRECOMPILE_GAS
         }(abi.encode(votes));
-        bool state = abi.decode(returnData, (bool));
-        return callSuccess && state;
+        return callSuccess && abi.decode(returnData, (bool));
     }
 }
