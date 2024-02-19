@@ -389,6 +389,7 @@ func init() {
 		"RootERC20":                       RootERC20,
 		"TestSimple":                      TestSimple,
 		"TestRewardToken":                 TestRewardToken,
+		"EntryPoint":                      EntryPoint,
 	}
 }
 
