@@ -1,6 +1,7 @@
 package precompiled
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 
@@ -106,15 +107,17 @@ func abiDecodeAddresses(input []byte) ([]types.Address, error) {
 	dummy := [32]byte{}
 	dummy[31] = 32
 
-	input = input[32:]
+	if !bytes.Equal(dummy[:], input[:32]) {
+		return nil, runtime.ErrInvalidInputData
+	}
 
-	size := binary.BigEndian.Uint32(input[28:32])
-	if uint32(len(input)) != size*32+32 {
+	size := binary.BigEndian.Uint32(input[60:64])
+	if uint32(len(input)) != size*32+64 {
 		return nil, runtime.ErrInvalidInputData
 	}
 
 	res := make([]types.Address, size)
-	for i, offset := 0, 32; offset < len(input); i, offset = i+1, offset+32 {
+	for i, offset := 0, 64; offset < len(input); i, offset = i+1, offset+32 {
 		res[i] = types.Address(input[offset+addrOffset : offset+32])
 	}
 
