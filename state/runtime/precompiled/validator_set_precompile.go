@@ -1,7 +1,6 @@
 package precompiled
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 
@@ -96,7 +95,7 @@ func createValidatorSet(blockNumber uint64, backend ValidatoSetPrecompileBackend
 }
 
 func abiDecodeAddresses(input []byte) ([]types.Address, error) {
-	if len(input) < 32 || len(input)%32 != 0 {
+	if len(input) < 64 || len(input)%32 != 0 {
 		return nil, runtime.ErrInvalidInputData
 	}
 
@@ -107,9 +106,7 @@ func abiDecodeAddresses(input []byte) ([]types.Address, error) {
 	dummy := [32]byte{}
 	dummy[31] = 32
 
-	if bytes.Equal(dummy[:], input[:32]) {
-		input = input[32:]
-	}
+	input = input[32:]
 
 	size := binary.BigEndian.Uint32(input[28:32])
 	if uint32(len(input)) != size*32+32 {
