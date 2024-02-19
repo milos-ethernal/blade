@@ -119,6 +119,27 @@ func Test_ValidatorSetPrecompile_run_HasQuorum(t *testing.T) {
 	assert.Equal(t, abiBoolFalse, v)
 }
 
+func Test_abiDecodeAddresses_Error(t *testing.T) {
+	dummy1 := [31]byte{}
+	dummy2 := [62]byte{}
+	dummy3 := [64]byte{}
+	dummy4 := [96]byte{}
+	dummy4[31] = 32
+	dummy4[63] = 10
+
+	_, err := abiDecodeAddresses(dummy1[:])
+	require.ErrorIs(t, err, runtime.ErrInvalidInputData)
+
+	_, err = abiDecodeAddresses(dummy2[:])
+	require.ErrorIs(t, err, runtime.ErrInvalidInputData)
+
+	_, err = abiDecodeAddresses(dummy3[:])
+	require.ErrorIs(t, err, runtime.ErrInvalidInputData)
+
+	_, err = abiDecodeAddresses(dummy4[:])
+	require.ErrorIs(t, err, runtime.ErrInvalidInputData)
+}
+
 type validatorSetBackendMock struct {
 	mock.Mock
 }

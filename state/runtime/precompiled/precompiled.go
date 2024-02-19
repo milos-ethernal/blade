@@ -49,14 +49,14 @@ type Precompiled struct {
 }
 
 // NewPrecompiled creates a new runtime for the precompiled contracts
-func NewPrecompiled(validatorSetBackend ValidatoSetPrecompileBackend) *Precompiled {
+func NewPrecompiled(validatorSetBackend ValidatorSetPrecompileBackend) *Precompiled {
 	p := &Precompiled{}
 	p.setupContracts(validatorSetBackend)
 
 	return p
 }
 
-func (p *Precompiled) setupContracts(validatorSetBackend ValidatoSetPrecompileBackend) {
+func (p *Precompiled) setupContracts(validatorSetBackend ValidatorSetPrecompileBackend) {
 	p.register("1", &ecrecover{p})
 	p.register("2", &sha256h{})
 	p.register("3", &ripemd160h{p})

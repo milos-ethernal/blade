@@ -48,7 +48,7 @@ type Executor struct {
 
 	// this value should be set if we want to enable validator set precompile
 	// note that this precompile WONT be enabled for WriteGenesis
-	validatorSetBackend precompiled.ValidatoSetPrecompileBackend
+	validatorSetBackend precompiled.ValidatorSetPrecompileBackend
 }
 
 // NewExecutor creates a new executor
@@ -239,7 +239,7 @@ func (e *Executor) BeginTxn(
 	return t, nil
 }
 
-func (e *Executor) SetValidatorSetBackend(validatorSetBackend precompiled.ValidatoSetPrecompileBackend) {
+func (e *Executor) SetValidatorSetBackend(validatorSetBackend precompiled.ValidatorSetPrecompileBackend) {
 	e.validatorSetBackend = validatorSetBackend
 }
 
@@ -281,7 +281,7 @@ type Transition struct {
 }
 
 func NewTransition(logger hclog.Logger, config chain.ForksInTime,
-	snap Snapshot, radix *Txn, validatorSetBackend precompiled.ValidatoSetPrecompiledBackend) *Transition {
+	snap Snapshot, radix *Txn, validatorSetBackend precompiled.ValidatorSetPrecompileBackend) *Transition {
 	return &Transition{
 		logger:      logger,
 		config:      config,
