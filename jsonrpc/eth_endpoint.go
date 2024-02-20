@@ -294,7 +294,7 @@ func (e *Eth) SendTransaction(args *txnArgs) (interface{}, error) {
 		return nil, err
 	}
 
-	return signedTx.Hash.String(), nil
+	return signedTx.Hash().String(), nil
 }
 
 // GetTransactionByHash returns a transaction by its hash.

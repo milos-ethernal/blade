@@ -226,7 +226,7 @@ func (d *Debug) TraceTransaction(
 				BlockHash:   block.Hash(),
 				BlockNumber: new(big.Int).SetUint64(block.Number()),
 				TxIndex:     txIndex,
-				TxHash:      tx.Hash,
+				TxHash:      tx.Hash(),
 			}
 
 			tracer, cancel, err := newTracer(config, txCtx)
