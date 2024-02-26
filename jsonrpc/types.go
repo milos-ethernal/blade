@@ -481,7 +481,7 @@ func (args *txnArgs) setFeeDefaults(priceLimit uint64, store ethStore) error {
 			return fmt.Errorf("maxFeePerGas (%v) < maxPriorityFeePerGas (%v)", args.MaxFeePerGas, args.MaxPriorityFeePerGas)
 		}
 
-		args.Type = argUintPtr(uint64(types.DynamicFeeTx))
+		args.Type = argUintPtr(uint64(types.DynamicFeeTxType))
 
 		return nil // No need to set anything, user already set MaxFeePerGas and MaxPriorityFeePerGas
 	}
@@ -548,7 +548,7 @@ func (args *txnArgs) setLondonFeeDefaults(head *types.Header, store ethStore) er
 		return fmt.Errorf("maxFeePerGas (%v) < maxPriorityFeePerGas (%v)", args.MaxFeePerGas, args.MaxPriorityFeePerGas)
 	}
 
-	args.Type = argUintPtr(uint64(types.DynamicFeeTx))
+	args.Type = argUintPtr(uint64(types.DynamicFeeTxType))
 
 	return nil
 }
