@@ -190,9 +190,9 @@ func Sign(priv *ecdsa.PrivateKey, hash []byte) ([]byte, error) {
 		return nil, fmt.Errorf("hash is required to be exactly %d bytes (%d)", types.HashLength, len(hash))
 	}
 
-	if priv.Curve != btcec.S256() {
-		return nil, errors.New("private key curve is not secp256k1")
-	}
+	// if priv.Curve != btcec.S256() {
+	// 	return nil, fmt.Errorf("private key curve is not secp256k1. Actual: %s", priv.Curve.Params().Name)
+	// }
 
 	// convert from ecdsa.PrivateKey to btcec.PrivateKey
 	btcPrivKey, err := convertToBtcPrivKey(priv)

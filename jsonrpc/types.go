@@ -401,6 +401,7 @@ type txnArgs struct {
 	Nonce                *argUint64          `json:"nonce"`
 	Type                 *argUint64          `json:"type"`
 	AccessList           *types.TxAccessList `json:"accessList,omitempty"`
+	ChainID              *argBytes           `json:"chainId,omitempty"`
 }
 
 // data retrieves the transaction calldata. Input field is preferred.
@@ -450,6 +451,19 @@ func (args *txnArgs) setDefaults(priceLimit uint64, eth *Eth) error {
 		}
 
 		args.Gas = &estimatedGasUint64
+	}
+
+	// If chain id is provided, ensure it matches the local chain id. Otherwise, set the local
+	// chain id as the default.
+	want := eth.chainID
+
+	if args.ChainID != nil {
+		have := new(big.Int).SetBytes(*args.ChainID)
+		if have.Uint64() != want {
+			return fmt.Errorf("chainId does not match node's (have=%v, want=%v)", have, want)
+		}
+	} else {
+		args.ChainID = argBytesPtr(new(big.Int).SetUint64(want).Bytes())
 	}
 
 	return nil

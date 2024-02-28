@@ -214,6 +214,10 @@ func DecodeTxn(arg *txnArgs, store nonceGetter, forceSetNonce bool) (*types.Tran
 		arg.Gas = argUintPtr(0)
 	}
 
+	if arg.ChainID == nil {
+		arg.ChainID = argBytesPtr([]byte{})
+	}
+
 	txType := types.LegacyTxType
 	if arg.Type != nil {
 		txType = types.TxType(*arg.Type)
@@ -234,6 +238,7 @@ func DecodeTxn(arg *txnArgs, store nonceGetter, forceSetNonce bool) (*types.Tran
 	txn.SetValue(new(big.Int).SetBytes(*arg.Value))
 	txn.SetInput(input)
 	txn.SetNonce(uint64(*arg.Nonce))
+	txn.SetChainID(new(big.Int).SetBytes(*arg.ChainID))
 
 	if arg.To != nil {
 		txn.SetTo(arg.To)
