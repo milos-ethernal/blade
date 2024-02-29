@@ -18,10 +18,17 @@ var (
 	errValidatorSetPrecompileNotEnabled = errors.New("validator set precompile is not enabled")
 )
 
+// ValidatorSetPrecompileBackend is an interface defining the contract for a precompile backend
+// responsible for retrieving validators (current account set) for a specific block number
 type ValidatorSetPrecompileBackend interface {
 	GetValidatorsForBlock(blockNumber uint64) (validator.AccountSet, error)
 }
 
+// validatorSetPrecompile is a concrete implementation of the contract interface.
+// The struct implements two functionalities through the `run` method:
+// - isValidator(address addr) bool: Returns true if addr is the address of a validator.
+// - hasQuorum(address[] addrs) bool: Returns true if the array of validators is sufficient to constitute a quorum
+// It encapsulates a backend that provides the functionality to retrieve validators for a specific block number
 type validatorSetPrecompile struct {
 	backend ValidatorSetPrecompileBackend
 }
@@ -34,7 +41,7 @@ func (c *validatorSetPrecompile) gas(input []byte, _ *chain.ForksInTime) uint64 
 // Run runs the precompiled contract with the given input.
 // There are two functions:
 // isValidator(address addr) bool
-// hasConsensus(address[] addrs) bool
+// hasQuorum(address[] addrs) bool
 // Input must be ABI encoded: address or (address[])
 // Output could be an error or ABI encoded "bool" value
 func (c *validatorSetPrecompile) run(input []byte, caller types.Address, host runtime.Host) ([]byte, error) {

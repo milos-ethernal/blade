@@ -825,22 +825,35 @@ func TestE2E_Deploy_Nested_Contract(t *testing.T) {
 }
 
 func TestE2E_TestValidatorSetPrecompile(t *testing.T) {
+	var (
+		premineBalance = ethgo.Ether(2e6) // 2M native tokens (so that we have enough balance to fund new validator)
+		stakeAmount    = ethgo.Ether(500)
+	)
+
 	admin, err := wallet.GenerateKey()
 	require.NoError(t, err)
 
-	validatorAddrs := []types.Address(nil)
-	adminAddr := types.Address(admin.Address())
+	dummyKey, err := wallet.GenerateKey()
+	require.NoError(t, err)
 
+	// start cluster with 'validatorSize' validators
 	cluster := framework.NewTestCluster(t, 4,
-		framework.WithBladeAdmin(adminAddr.String()),
-		framework.WithSecretsCallback(func(addrs []types.Address, _ *framework.TestClusterConfig) {
-			validatorAddrs = addrs
-		}))
+		framework.WithBladeAdmin(admin.Address().String()),
+		framework.WithSecretsCallback(func(addresses []types.Address, config *framework.TestClusterConfig) {
+			for _, a := range addresses {
+				config.Premine = append(config.Premine, fmt.Sprintf("%s:%s", a, premineBalance))
+				config.StakeAmounts = append(config.StakeAmounts, stakeAmount)
+			}
+
+			config.Premine = append(config.Premine, fmt.Sprintf("%s:%s", dummyKey.Address(), premineBalance))
+		}),
+	)
+
 	defer cluster.Stop()
 
 	cluster.WaitForReady(t)
 
-	validatorKeys := make([]*wallet.Key, len(validatorAddrs))
+	validatorKeys := make([]*wallet.Key, len(cluster.Servers))
 
 	for i, s := range cluster.Servers {
 		voterAcc, err := validatorHelper.GetAccountFromDir(s.DataDir())
@@ -880,20 +893,33 @@ func TestE2E_TestValidatorSetPrecompile(t *testing.T) {
 	sendIncTx := func(validatorID int) {
 		t.Helper()
 
+		isValidator := validatorID >= 0 && validatorID < len(validatorKeys)
 		incFn := contractsapi.TestValidatorSetPrecompile.Abi.GetMethod("inc")
 
 		incFnBytes, err := incFn.Encode([]interface{}{})
 		require.NoError(t, err)
 
+		var key *wallet.Key
+		if isValidator {
+			key = validatorKeys[validatorID]
+		} else {
+			key = dummyKey
+		}
+
 		txn := &ethgo.Transaction{
-			From:  ethgo.Address(validatorAddrs[validatorID]),
+			From:  key.Address(),
 			To:    &validatorSetPrecompileTestAddr,
 			Input: incFnBytes,
 		}
 
-		receipt, err = txRelayer.SendTransaction(txn, validatorKeys[validatorID])
-		require.NoError(t, err)
-		require.Equal(t, uint64(types.ReceiptSuccess), receipt.Status)
+		receipt, err = txRelayer.SendTransaction(txn, key)
+
+		if isValidator {
+			require.NoError(t, err)
+			require.Equal(t, uint64(types.ReceiptSuccess), receipt.Status)
+		} else {
+			require.ErrorContains(t, err, "unable to apply transaction even for the highest gas limit")
+		}
 	}
 
 	require.False(t, hasQuorum())
@@ -905,6 +931,9 @@ func TestE2E_TestValidatorSetPrecompile(t *testing.T) {
 	require.False(t, hasQuorum())
 
 	sendIncTx(1)
+	require.False(t, hasQuorum())
+
+	sendIncTx(-1) // non validator
 	require.False(t, hasQuorum())
 
 	sendIncTx(3)
