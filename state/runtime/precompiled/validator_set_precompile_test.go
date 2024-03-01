@@ -15,7 +15,7 @@ import (
 )
 
 func Test_ValidatorSetPrecompile_gas(t *testing.T) {
-	assert.Equal(t, uint64(150000), (&validatorSetPrecompile{}).gas(nil, nil))
+	assert.Equal(t, uint64(240000), (&validatorSetPrecompile{}).gas(nil, nil))
 }
 
 func Test_ValidatorSetPrecompile_run_BackendNotSet(t *testing.T) {

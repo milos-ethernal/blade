@@ -35,7 +35,7 @@ type validatorSetPrecompile struct {
 
 // gas returns the gas required to execute the pre-compiled contract
 func (c *validatorSetPrecompile) gas(input []byte, _ *chain.ForksInTime) uint64 {
-	return 150000
+	return 240000
 }
 
 // Run runs the precompiled contract with the given input.
