@@ -37,7 +37,7 @@ func init() {
 }
 
 type contract interface {
-	gas(input []byte, config *chain.ForksInTime) uint64
+	gas(input []byte, caller types.Address, config *chain.ForksInTime) uint64
 	run(input []byte, caller types.Address, host runtime.Host) ([]byte, error)
 }
 
@@ -139,7 +139,7 @@ func (p *Precompiled) Name() string {
 // Run runs an execution
 func (p *Precompiled) Run(c *runtime.Contract, host runtime.Host, config *chain.ForksInTime) *runtime.ExecutionResult {
 	contract := p.contracts[c.CodeAddress]
-	gasCost := contract.gas(c.Input, config)
+	gasCost := contract.gas(c.Input, c.Caller, config)
 
 	// In the case of not enough gas for precompiled execution we return ErrOutOfGas
 	if c.Gas < gasCost {

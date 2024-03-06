@@ -826,6 +826,20 @@ func (p *Polybft) GetLatestChainConfig() (*chain.Params, error) {
 	return nil, nil
 }
 
+func (p *Polybft) GetMaxValidatorSetSize() (uint64, error) {
+	params, err := p.GetLatestChainConfig()
+	if err != nil {
+		return 0, err
+	}
+
+	polyBFTConfig, err := GetPolyBFTConfig(params)
+	if err != nil {
+		return 0, err
+	}
+
+	return polyBFTConfig.MaxValidatorSetSize, nil
+}
+
 // GetBridgeProvider is an implementation of Consensus interface
 // Returns an instance of BridgeDataProvider
 func (p *Polybft) GetBridgeProvider() consensus.BridgeDataProvider {

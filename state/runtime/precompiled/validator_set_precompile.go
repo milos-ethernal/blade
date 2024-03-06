@@ -12,7 +12,10 @@ import (
 	"github.com/hashicorp/go-hclog"
 )
 
-const addrOffset = 32 - types.AddressLength
+const (
+	addrOffset                   = 32 - types.AddressLength
+	defaultMaxHasQuorumAddresses = 100
+)
 
 var (
 	errValidatorSetPrecompileNotEnabled = errors.New("validator set precompile is not enabled")
@@ -22,6 +25,7 @@ var (
 // responsible for retrieving validators (current account set) for a specific block number
 type ValidatorSetPrecompileBackend interface {
 	GetValidatorsForBlock(blockNumber uint64) (validator.AccountSet, error)
+	GetMaxValidatorSetSize() (uint64, error)
 }
 
 // validatorSetPrecompile is a concrete implementation of the contract interface.
@@ -34,7 +38,7 @@ type validatorSetPrecompile struct {
 }
 
 // gas returns the gas required to execute the pre-compiled contract
-func (c *validatorSetPrecompile) gas(input []byte, _ *chain.ForksInTime) uint64 {
+func (c *validatorSetPrecompile) gas(_ []byte, _ types.Address, config *chain.ForksInTime) uint64 {
 	return 240000
 }
 
@@ -67,7 +71,16 @@ func (c *validatorSetPrecompile) run(input []byte, caller types.Address, host ru
 		return abiBoolFalse, nil
 	}
 
-	addresses, err := abiDecodeAddresses(input)
+	maxAddressesCount, err := c.backend.GetMaxValidatorSetSize()
+	if err != nil {
+		return nil, err
+	}
+
+	if maxAddressesCount == 0 {
+		maxAddressesCount = defaultMaxHasQuorumAddresses
+	}
+
+	addresses, err := abiDecodeAddresses(input, uint32(maxAddressesCount))
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +115,7 @@ func createValidatorSet(blockNumber uint64, backend ValidatorSetPrecompileBacken
 	return validator.NewValidatorSet(accounts, hclog.NewNullLogger()), nil
 }
 
-func abiDecodeAddresses(input []byte) ([]types.Address, error) {
+func abiDecodeAddresses(input []byte, maxCount uint32) ([]types.Address, error) {
 	if len(input) < 64 || len(input)%32 != 0 {
 		return nil, runtime.ErrInvalidInputData
 	}
@@ -120,6 +133,10 @@ func abiDecodeAddresses(input []byte) ([]types.Address, error) {
 
 	size := binary.BigEndian.Uint32(input[60:64])
 	if uint32(len(input)) != size*32+64 {
+		return nil, runtime.ErrInvalidInputData
+	}
+	// sanitize the input if it contains too many addresses.
+	if maxCount != 0 && size > maxCount {
 		return nil, runtime.ErrInvalidInputData
 	}
 

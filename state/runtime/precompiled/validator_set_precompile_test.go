@@ -15,7 +15,7 @@ import (
 )
 
 func Test_ValidatorSetPrecompile_gas(t *testing.T) {
-	assert.Equal(t, uint64(240000), (&validatorSetPrecompile{}).gas(nil, nil))
+	assert.Equal(t, uint64(240000), (&validatorSetPrecompile{}).gas(nil, types.Address{}, nil))
 }
 
 func Test_ValidatorSetPrecompile_run_BackendNotSet(t *testing.T) {
@@ -101,6 +101,8 @@ func Test_ValidatorSetPrecompile_run_HasQuorum(t *testing.T) {
 	backendMock := &validatorSetBackendMock{}
 
 	backendMock.On("GetValidatorsForBlock", uint64(host.context.Number)).Return(accounts, error(nil))
+	backendMock.On("GetMaxValidatorSetSize").Return(uint64(100), error(nil)).Twice()
+	backendMock.On("GetMaxValidatorSetSize").Return(uint64(0), error(nil)).Once()
 
 	p := &validatorSetPrecompile{
 		backend: backendMock,
@@ -127,16 +129,16 @@ func Test_abiDecodeAddresses_Error(t *testing.T) {
 	dummy4[31] = 32
 	dummy4[63] = 10
 
-	_, err := abiDecodeAddresses(dummy1[:])
+	_, err := abiDecodeAddresses(dummy1[:], 0)
 	require.ErrorIs(t, err, runtime.ErrInvalidInputData)
 
-	_, err = abiDecodeAddresses(dummy2[:])
+	_, err = abiDecodeAddresses(dummy2[:], 0)
 	require.ErrorIs(t, err, runtime.ErrInvalidInputData)
 
-	_, err = abiDecodeAddresses(dummy3[:])
+	_, err = abiDecodeAddresses(dummy3[:], 0)
 	require.ErrorIs(t, err, runtime.ErrInvalidInputData)
 
-	_, err = abiDecodeAddresses(dummy4[:])
+	_, err = abiDecodeAddresses(dummy4[:], 0)
 	require.ErrorIs(t, err, runtime.ErrInvalidInputData)
 }
 
@@ -148,6 +150,12 @@ func (m *validatorSetBackendMock) GetValidatorsForBlock(blockNumber uint64) (val
 	call := m.Called(blockNumber)
 
 	return call.Get(0).(validator.AccountSet), call.Error(1)
+}
+
+func (m *validatorSetBackendMock) GetMaxValidatorSetSize() (uint64, error) {
+	call := m.Called()
+
+	return call.Get(0).(uint64), call.Error(1)
 }
 
 func getDummyAccountSet() validator.AccountSet {
