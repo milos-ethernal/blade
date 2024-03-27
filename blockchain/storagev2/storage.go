@@ -1,4 +1,3 @@
-//nolint:stylecheck
 package storagev2
 
 import (
@@ -39,6 +38,8 @@ const (
 )
 
 // Lookup tables
+//
+//nolint:stylecheck // needed because linter considers _ in name as an error
 const (
 	FORK         = uint8(0) | LOOKUP_INDEX
 	HEAD_HASH    = uint8(2) | LOOKUP_INDEX
@@ -47,14 +48,18 @@ const (
 	TX_LOOKUP    = uint8(8) | LOOKUP_INDEX
 )
 
+//nolint:stylecheck // needed because linter considers _ in name as an error
 const MAX_TABLES = uint8(20)
 
 // Database indexes
+//
+//nolint:stylecheck // needed because linter considers _ in name as an error
 const (
 	MAINDB_INDEX = uint8(0)
 	LOOKUP_INDEX = uint8(1)
 )
 
+//nolint:stylecheck // needed because linter considers _ in name as an error
 var (
 	FORK_KEY        = []byte("0000000f")
 	HEAD_HASH_KEY   = []byte("0000000h")
