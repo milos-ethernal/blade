@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/0xPolygon/polygon-edge/chain"
+	"github.com/0xPolygon/polygon-edge/crypto"
 	"github.com/0xPolygon/polygon-edge/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -31,17 +33,30 @@ func TestEth_TxnPool_SendRawTransaction(t *testing.T) {
 func TestEth_TxnPool_SendTransaction(t *testing.T) {
 	store := &mockStoreTxn{}
 	store.AddAccount(addr0)
-	eth := newTestEthEndpoint(store)
-	txToSend := types.NewTx(types.NewLegacyTx(
-		types.WithGasPrice(big.NewInt(1)),
-		types.WithFrom(addr0),
-		types.WithTo(argAddrPtr(addr0)),
-		types.WithNonce(0),
-	))
 
-	_, err := eth.SendRawTransaction(txToSend.MarshalRLP())
+	eth := newTestEthEndpoint(store)
+	txToSend := &txnArgs{
+		From:     &addr0,
+		To:       &addr1,
+		Gas:      argUintPtr(100000),
+		GasPrice: argBytesPtr([]byte{0x64}),
+		Value:    argBytesPtr([]byte{0x64}),
+		Data:     nil,
+		Nonce:    argUintPtr(0),
+	}
+
+	contractKey, err := crypto.GenerateECDSAKey()
+	assert.NoError(t, err)
+
+	eth.ecdsaKey = contractKey
+
+	defaultChainID := uint64(100)
+	eth.txSigner = crypto.NewSigner(chain.AllForksEnabled.At(0), defaultChainID)
+
+	hash, err := eth.SendTransaction(txToSend)
 	assert.NoError(t, err)
 	assert.NotEqual(t, store.txn.Hash(), types.ZeroHash)
+	assert.NotNil(t, hash)
 }
 
 type mockStoreTxn struct {
@@ -60,6 +75,10 @@ func (m *mockStoreTxn) AddTx(tx *types.Transaction) error {
 
 func (m *mockStoreTxn) GetNonce(addr types.Address) uint64 {
 	return 1
+}
+
+func (m *mockStoreTxn) GetForksInTime(blockNumber uint64) chain.ForksInTime {
+	return chain.AllForksEnabled.At(0)
 }
 
 func (m *mockStoreTxn) AddAccount(addr types.Address) *mockAccount {

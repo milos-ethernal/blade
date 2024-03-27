@@ -286,4 +286,26 @@ func TestE2E_JsonRPC(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEqual(t, types.ZeroHash, hash)
 	})
+
+	t.Run("eth_sendTransaction", func(t *testing.T) {
+		receiver := types.StringToAddress("0xDEADFFFF")
+		gasPrice, err := newEthClient.GasPrice()
+		require.NoError(t, err)
+
+		_, newAccountAddr := tests.GenerateKeyAndAddr(t)
+
+		txn := types.NewTx(
+			types.NewLegacyTx(
+				types.WithNonce(0),
+				types.WithFrom(newAccountAddr),
+				types.WithTo(&receiver),
+				types.WithValue(ethgo.Gwei(1)),
+				types.WithGas(21000),
+				types.WithGasPrice(new(big.Int).SetUint64(gasPrice)),
+			))
+
+		hash, err := newEthClient.SendTransaction(txn)
+		require.NoError(t, err)
+		require.NotEqual(t, types.ZeroHash, hash)
+	})
 }

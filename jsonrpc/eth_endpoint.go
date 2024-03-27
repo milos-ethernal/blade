@@ -109,6 +109,7 @@ type Eth struct {
 	filterManager *FilterManager
 	priceLimit    uint64
 	ecdsaKey      *crypto.ECDSAKey
+	txSigner      crypto.TxSigner
 }
 
 func NewEth(
@@ -117,7 +118,8 @@ func NewEth(
 	filterManager *FilterManager,
 	secretsManager secrets.SecretsManager,
 	chainID uint64,
-	priceLimit uint64) (*Eth, error) {
+	priceLimit uint64,
+	txSigner crypto.TxSigner) (*Eth, error) {
 	var (
 		ecdsaKey *crypto.ECDSAKey
 		err      error
@@ -137,6 +139,7 @@ func NewEth(
 		ecdsaKey:      ecdsaKey,
 		priceLimit:    priceLimit,
 		filterManager: filterManager,
+		txSigner:      txSigner,
 	}, nil
 }
 
@@ -271,7 +274,7 @@ func (e *Eth) CreateAccessList(arg *txnArgs, filter BlockNumberOrHash) (interfac
 		return nil, err
 	}
 
-	transaction, err := DecodeTxn(arg, header.Number, e.store, true)
+	transaction, err := DecodeTxn(arg, e.store, true)
 	if err != nil {
 		return nil, err
 	}
@@ -376,10 +379,37 @@ func (e *Eth) SendRawTransaction(buf argBytes) (interface{}, error) {
 	return tx.Hash().String(), nil
 }
 
-// SendTransaction rejects eth_sendTransaction json-rpc call as we don't support wallet management
-func (e *Eth) SendTransaction(_ *txnArgs) (interface{}, error) {
-	return nil, fmt.Errorf("request calls to eth_sendTransaction method are not supported," +
-		" use eth_sendRawTransaction instead")
+// SendTransaction creates a transaction for the given argument, sign it and submit it to the
+// transaction pool.
+func (e *Eth) SendTransaction(args *txnArgs) (interface{}, error) {
+	if e.ecdsaKey == nil {
+		return nil, errMissingPrivateKey
+	}
+
+	if err := args.setDefaults(e.priceLimit, e); err != nil {
+		return nil, err
+	}
+
+	tx, err := DecodeTxn(args, e.store, true)
+	if err != nil {
+		return nil, err
+	}
+
+	cryptoECDSAPrivKey, err := polyWallet.AdaptECDSAPrivKey(e.ecdsaKey)
+	if err != nil {
+		return nil, err
+	}
+
+	signedTx, err := e.txSigner.SignTx(tx, cryptoECDSAPrivKey)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := e.store.AddTx(signedTx); err != nil {
+		return nil, err
+	}
+
+	return signedTx.Hash().String(), nil
 }
 
 // GetTransactionByHash returns a transaction by its hash.
@@ -625,7 +655,7 @@ func (e *Eth) Call(arg *txnArgs, filter BlockNumberOrHash, apiOverride *StateOve
 		return nil, err
 	}
 
-	transaction, err := DecodeTxn(arg, header.Number, e.store, true)
+	transaction, err := DecodeTxn(arg, e.store, true)
 	if err != nil {
 		return nil, err
 	}
@@ -680,7 +710,7 @@ func (e *Eth) EstimateGas(arg *txnArgs, rawNum *BlockNumber) (interface{}, error
 	}
 
 	// testTransaction should execute tx with nonce always set to the current expected nonce for the account
-	transaction, err := DecodeTxn(arg, header.Number, e.store, true)
+	transaction, err := DecodeTxn(arg, e.store, true)
 	if err != nil {
 		return nil, err
 	}
