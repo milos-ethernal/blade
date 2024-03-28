@@ -12,6 +12,7 @@ import (
 	"github.com/0xPolygon/polygon-edge/helper/keccak"
 	"github.com/0xPolygon/polygon-edge/state/runtime"
 	"github.com/0xPolygon/polygon-edge/types"
+	"github.com/holiman/uint256"
 )
 
 type instruction func(c *state)
@@ -23,10 +24,38 @@ const (
 )
 
 var (
-	zero     = big.NewInt(0)
-	one      = big.NewInt(1)
-	wordSize = big.NewInt(32)
+	zero        = big.NewInt(0)
+	one         = big.NewInt(1)
+	wordSize    = big.NewInt(32)
+	wordSize256 = uint256.NewInt(32)
 )
+
+func equalOrOverflowsUint256(b *big.Int) bool {
+	return b.BitLen() > 8
+}
+
+var bufPool = sync.Pool{
+	New: func() interface{} {
+		// Store pointer to avoid heap allocation in caller
+		// Please check SA6002 in StaticCheck for details
+		buf := make([]byte, 128)
+
+		return &buf
+	},
+}
+
+var (
+	_W = bits.UintSize
+	_S = _W / 8
+)
+
+func min(i, j uint64) uint64 {
+	if i < j {
+		return i
+	}
+
+	return j
+}
 
 func (c *state) calculateGasForEIP2929(addr types.Address) uint64 {
 	var gas uint64
@@ -41,106 +70,100 @@ func (c *state) calculateGasForEIP2929(addr types.Address) uint64 {
 	return gas
 }
 
+// Generic WriteToSlice function that calls optimized function when
+// applicable or generic one.
+func WriteToSlice(z uint256.Int, dest []byte) {
+	if len(dest) == 32 {
+		WriteToSlice32(z, dest)
+	} else {
+		z.WriteToSlice(dest)
+	}
+}
+
+// Optimized write to slice when destination size is 32 bytes. This way
+// the CPU does not execute code in loop achieving greater paralelization
+func WriteToSlice32(z uint256.Int, dest []byte) {
+	dest[31] = byte(z[0] >> uint64(8*0))
+	dest[30] = byte(z[0] >> uint64(8*1))
+	dest[29] = byte(z[0] >> uint64(8*2))
+	dest[28] = byte(z[0] >> uint64(8*3))
+	dest[27] = byte(z[0] >> uint64(8*4))
+	dest[26] = byte(z[0] >> uint64(8*5))
+	dest[25] = byte(z[0] >> uint64(8*6))
+	dest[24] = byte(z[0] >> uint64(8*7))
+	dest[23] = byte(z[1] >> uint64(8*0))
+	dest[22] = byte(z[1] >> uint64(8*1))
+	dest[21] = byte(z[1] >> uint64(8*2))
+	dest[20] = byte(z[1] >> uint64(8*3))
+	dest[19] = byte(z[1] >> uint64(8*4))
+	dest[18] = byte(z[1] >> uint64(8*5))
+	dest[17] = byte(z[1] >> uint64(8*6))
+	dest[16] = byte(z[1] >> uint64(8*7))
+	dest[15] = byte(z[2] >> uint64(8*0))
+	dest[14] = byte(z[2] >> uint64(8*1))
+	dest[13] = byte(z[2] >> uint64(8*2))
+	dest[12] = byte(z[2] >> uint64(8*3))
+	dest[11] = byte(z[2] >> uint64(8*4))
+	dest[10] = byte(z[2] >> uint64(8*5))
+	dest[9] = byte(z[2] >> uint64(8*6))
+	dest[8] = byte(z[2] >> uint64(8*7))
+	dest[7] = byte(z[3] >> uint64(8*0))
+	dest[6] = byte(z[3] >> uint64(8*1))
+	dest[5] = byte(z[3] >> uint64(8*2))
+	dest[4] = byte(z[3] >> uint64(8*3))
+	dest[3] = byte(z[3] >> uint64(8*4))
+	dest[2] = byte(z[3] >> uint64(8*5))
+	dest[1] = byte(z[3] >> uint64(8*6))
+	dest[0] = byte(z[3] >> uint64(8*7))
+}
+
 func opAdd(c *state) {
 	a := c.pop()
 	b := c.top()
 
-	b.Add(a, b)
-	toU256(b)
+	b.Add(&a, b)
 }
 
 func opMul(c *state) {
 	a := c.pop()
 	b := c.top()
 
-	b.Mul(a, b)
-	toU256(b)
+	b.Mul(&a, b)
 }
 
 func opSub(c *state) {
 	a := c.pop()
 	b := c.top()
 
-	b.Sub(a, b)
-	toU256(b)
+	b.Sub(&a, b)
 }
 
 func opDiv(c *state) {
 	a := c.pop()
 	b := c.top()
 
-	if b.Sign() == 0 {
-		// division by zero
-		b.Set(zero)
-	} else {
-		b.Div(a, b)
-		toU256(b)
-	}
+	b.Div(&a, b)
 }
 
 func opSDiv(c *state) {
-	a := to256(c.pop())
-	b := to256(c.top())
+	a := c.pop()
+	b := c.top()
 
-	if b.Sign() == 0 {
-		// division by zero
-		b.Set(zero)
-	} else {
-		neg := a.Sign() != b.Sign()
-		b.Div(a.Abs(a), b.Abs(b))
-
-		if neg {
-			b.Neg(b)
-		}
-
-		toU256(b)
-	}
+	b.SDiv(&a, b)
 }
 
 func opMod(c *state) {
 	a := c.pop()
 	b := c.top()
 
-	if b.Sign() == 0 {
-		// division by zero
-		b.Set(zero)
-	} else {
-		b.Mod(a, b)
-		toU256(b)
-	}
+	b.Mod(&a, b)
 }
 
 func opSMod(c *state) {
-	a := to256(c.pop())
-	b := to256(c.top())
+	a := c.pop()
+	b := c.top()
 
-	if b.Sign() == 0 {
-		// division by zero
-		b.Set(zero)
-	} else {
-		neg := a.Sign() < 0
-		b.Mod(a.Abs(a), b.Abs(b))
-
-		if neg {
-			b.Neg(b)
-		}
-
-		toU256(b)
-	}
-}
-
-var bigPool = sync.Pool{
-	New: func() interface{} {
-		return new(big.Int)
-	},
-}
-
-func acquireBig() *big.Int {
-	return bigPool.Get().(*big.Int)
-}
-
-func releaseBig(b *big.Int) {
-	bigPool.Put(b)
+	b.SMod(&a, b)
 }
 
 func opExp(c *state) {
@@ -159,23 +182,7 @@ func opExp(c *state) {
 		return
 	}
 
-	z := acquireBig().Set(one)
-
-	// https://www.programminglogic.com/fast-exponentiation-algorithms/
-	for _, d := range y.Bits() {
-		for i := 0; i < _W; i++ {
-			if d&1 == 1 {
-				toU256(z.Mul(z, x))
-			}
-
-			d >>= 1
-
-			toU256(x.Mul(x, x))
-		}
-	}
-
-	y.Set(z)
-	releaseBig(z)
+	y.Exp(&x, y)
 }
 
 func opAddMod(c *state) {
@@ -183,14 +190,7 @@ func opAddMod(c *state) {
 	b := c.pop()
 	z := c.top()
 
-	if z.Sign() == 0 {
-		// division by zero
-		z.Set(zero)
-	} else {
-		a = a.Add(a, b)
-		z = z.Mod(a, z)
-		toU256(z)
-	}
+	z.AddMod(&a, &b, z)
 }
 
 func opMulMod(c *state) {
@@ -198,67 +198,49 @@ func opMulMod(c *state) {
 	b := c.pop()
 	z := c.top()
 
-	if z.Sign() == 0 {
-		// division by zero
-		z.Set(zero)
-	} else {
-		a = a.Mul(a, b)
-		z = z.Mod(a, z)
-		toU256(z)
-	}
+	z.MulMod(&a, &b, z)
 }
 
 func opAnd(c *state) {
 	a := c.pop()
 	b := c.top()
 
-	b.And(a, b)
+	b.And(&a, b)
 }
 
 func opOr(c *state) {
 	a := c.pop()
 	b := c.top()
 
-	b.Or(a, b)
+	b.Or(&a, b)
 }
 
 func opXor(c *state) {
 	a := c.pop()
 	b := c.top()
 
-	b.Xor(a, b)
+	b.Xor(&a, b)
 }
-
-var opByteMask = big.NewInt(255)
 
 func opByte(c *state) {
 	x := c.pop()
 	y := c.top()
 
-	indx := x.Int64()
-	if indx > 31 {
-		y.Set(zero)
-	} else {
-		sh := (31 - indx) * 8
-		y.Rsh(y, uint(sh))
-		y.And(y, opByteMask)
-	}
+	y.Byte(&x)
 }
 
 func opNot(c *state) {
 	a := c.top()
-
 	a.Not(a)
-	toU256(a)
 }
 
 func opIsZero(c *state) {
 	a := c.top()
 
-	if a.Sign() == 0 {
-		a.Set(one)
+	if a.IsZero() {
+		a.SetOne()
 	} else {
-		a.Set(zero)
+		a.SetUint64(0)
 	}
 }
 
@@ -266,10 +248,10 @@ func opEq(c *state) {
 	a := c.pop()
 	b := c.top()
 
-	if a.Cmp(b) == 0 {
-		b.Set(one)
+	if a.Eq(b) {
+		b.SetOne()
 	} else {
-		b.Set(zero)
+		b.SetUint64(0)
 	}
 }
 
@@ -277,10 +259,10 @@ func opLt(c *state) {
 	a := c.pop()
 	b := c.top()
 
-	if a.Cmp(b) < 0 {
-		b.Set(one)
+	if a.Lt(b) {
+		b.SetOne()
 	} else {
-		b.Set(zero)
+		b.SetUint64(0)
 	}
 }
 
@@ -288,32 +270,32 @@ func opGt(c *state) {
 	a := c.pop()
 	b := c.top()
 
-	if a.Cmp(b) > 0 {
-		b.Set(one)
+	if a.Gt(b) {
+		b.SetOne()
 	} else {
-		b.Set(zero)
+		b.SetUint64(0)
 	}
 }
 
 func opSlt(c *state) {
-	a := to256(c.pop())
-	b := to256(c.top())
+	a := c.pop()
+	b := c.top()
 
-	if a.Cmp(b) < 0 {
-		b.Set(one)
+	if a.Slt(b) {
+		b.SetOne()
 	} else {
-		b.Set(zero)
+		b.SetUint64(0)
 	}
 }
 
 func opSgt(c *state) {
-	a := to256(c.pop())
-	b := to256(c.top())
+	a := c.pop()
+	b := c.top()
 
-	if a.Cmp(b) > 0 {
-		b.Set(one)
+	if a.Sgt(b) {
+		b.SetOne()
 	} else {
-		b.Set(zero)
+		b.SetUint64(0)
 	}
 }
 
@@ -321,33 +303,7 @@ func opSignExtension(c *state) {
 	ext := c.pop()
 	x := c.top()
 
-	if ext.Cmp(wordSize) > 0 {
-		return
-	}
-
-	if x == nil {
-		return
-	}
-
-	bit := uint(ext.Uint64()*8 + 7)
-
-	mask := acquireBig().Set(one)
-	mask.Lsh(mask, bit)
-	mask.Sub(mask, one)
-
-	if x.Bit(int(bit)) > 0 {
-		mask.Not(mask)
-		x.Or(x, mask)
-	} else {
-		x.And(x, mask)
-	}
-
-	toU256(x)
-	releaseBig(mask)
-}
-
-func equalOrOverflowsUint256(b *big.Int) bool {
-	return b.BitLen() > 8
+	x.ExtendSign(x, &ext)
 }
 
 func opShl(c *state) {
@@ -360,11 +316,10 @@ func opShl(c *state) {
 	shift := c.pop()
 	value := c.top()
 
-	if equalOrOverflowsUint256(shift) {
-		value.Set(zero)
-	} else {
+	if shift.LtUint64(256) {
 		value.Lsh(value, uint(shift.Uint64()))
-		toU256(value)
+	} else {
+		value.Clear()
 	}
 }
 
@@ -378,11 +333,10 @@ func opShr(c *state) {
 	shift := c.pop()
 	value := c.top()
 
-	if equalOrOverflowsUint256(shift) {
-		value.Set(zero)
-	} else {
+	if shift.LtUint64(256) {
 		value.Rsh(value, uint(shift.Uint64()))
-		toU256(value)
+	} else {
+		value.Clear()
 	}
 }
 
@@ -394,88 +348,53 @@ func opSar(c *state) {
 	}
 
 	shift := c.pop()
-	value := to256(c.top())
+	value := c.top()
 
-	if equalOrOverflowsUint256(shift) {
+	// This seams like unneeded since uint256 is maximum value
+	if equalOrOverflowsUint256(shift.ToBig()) {
 		if value.Sign() >= 0 {
-			value.Set(zero)
+			value.SetUint64(0)
 		} else {
-			value.Set(tt256m1)
+			value.SetAllOne()
 		}
 	} else {
-		value.Rsh(value, uint(shift.Uint64()))
-		toU256(value)
+		value.SRsh(value, uint(shift.Uint64()))
 	}
 }
 
 // memory operations
-
-var bufPool = sync.Pool{
-	New: func() interface{} {
-		// Store pointer to avoid heap allocation in caller
-		// Please check SA6002 in StaticCheck for details
-		buf := make([]byte, 128)
-
-		return &buf
-	},
-}
-
 func opMLoad(c *state) {
-	offset := c.pop()
+	v := c.top()
 
 	var ok bool
-	c.tmp, ok = c.get2(c.tmp[:0], offset, wordSize)
+	c.tmp, ok = c.get2(c.tmp[:0], *v, *wordSize256)
 
+	// ### Error handling?
 	if !ok {
 		return
 	}
 
-	c.push1().SetBytes(c.tmp)
+	v.SetBytes(c.tmp)
 }
-
-var (
-	_W = bits.UintSize
-	_S = _W / 8
-)
 
 func opMStore(c *state) {
 	offset := c.pop()
 	val := c.pop()
 
-	if !c.allocateMemory(offset, wordSize) {
+	if !c.allocateMemory(offset, *wordSize256) {
 		return
 	}
 
 	o := offset.Uint64()
-	buf := c.memory[o : o+32]
 
-	i := 32
-
-	// convert big.int to bytes
-	// https://golang.org/src/math/big/nat.go#L1284
-	for _, d := range val.Bits() {
-		for j := 0; j < _S; j++ {
-			i--
-
-			buf[i] = byte(d)
-
-			d >>= 8
-		}
-	}
-
-	// fill the rest of the slot with zeros
-	for i > 0 {
-		i--
-
-		buf[i] = 0
-	}
+	WriteToSlice(val, c.memory[o:o+32])
 }
 
 func opMStore8(c *state) {
 	offset := c.pop()
 	val := c.pop()
 
-	if !c.allocateMemory(offset, one) {
+	if !c.allocateMemory(offset, *uint256.NewInt(1)) {
 		return
 	}
 
@@ -490,10 +409,11 @@ func opSload(c *state) {
 	var gas uint64
 
 	if c.config.Berlin {
-		if _, slotPresent := c.host.ContainsAccessListSlot(c.msg.Address, bigToHash(loc)); !slotPresent {
+		storageKey := uint256ToHash(loc)
+		if _, slotPresent := c.host.ContainsAccessListSlot(c.msg.Address, storageKey); !slotPresent {
 			gas = ColdStorageReadCostEIP2929
 
-			c.host.AddSlotToAccessList(c.msg.Address, bigToHash(loc))
+			c.host.AddSlotToAccessList(c.msg.Address, storageKey)
 		} else {
 			gas = WarmStorageReadCostEIP2929
 		}
@@ -510,7 +430,7 @@ func opSload(c *state) {
 		return
 	}
 
-	val := c.host.GetStorage(c.msg.Address, bigToHash(loc))
+	val := c.host.GetStorage(c.msg.Address, uint256ToHash(loc))
 	loc.SetBytes(val.Bytes())
 }
 
@@ -607,8 +527,9 @@ func opSha3(c *state) {
 
 	c.tmp = keccak.Keccak256(c.tmp[:0], c.tmp)
 
-	v := c.push1()
+	v := uint256.Int{0}
 	v.SetBytes(c.tmp)
+	c.push(v)
 }
 
 func opPop(c *state) {
@@ -618,7 +539,9 @@ func opPop(c *state) {
 // context operations
 
 func opAddress(c *state) {
-	c.push1().SetBytes(c.msg.Address.Bytes())
+	v := uint256.Int{0}
+	v.SetBytes(c.msg.Address.Bytes())
+	c.push(v)
 }
 
 func opBalance(c *state) {
@@ -640,7 +563,10 @@ func opBalance(c *state) {
 		return
 	}
 
-	c.push1().Set(c.host.GetBalance(addr))
+	balance := c.host.GetBalance(addr)
+	uintBalance, _ := uint256.FromBig(balance)
+
+	c.push(*uintBalance)
 }
 
 func opSelfBalance(c *state) {
@@ -650,7 +576,10 @@ func opSelfBalance(c *state) {
 		return
 	}
 
-	c.push1().Set(c.host.GetBalance(c.msg.Address))
+	balance := c.host.GetBalance(c.msg.Address)
+	uintBalance, _ := uint256.FromBig(balance)
+
+	c.push(*uintBalance)
 }
 
 func opChainID(c *state) {
@@ -660,32 +589,32 @@ func opChainID(c *state) {
 		return
 	}
 
-	c.push1().SetUint64(uint64(c.host.GetTxContext().ChainID))
+	x := uint256.NewInt(uint64(c.host.GetTxContext().ChainID))
+
+	c.push(*x)
 }
 
 func opOrigin(c *state) {
-	c.push1().SetBytes(c.host.GetTxContext().Origin.Bytes())
+	x := uint256.Int{0}
+	x.SetBytes(c.host.GetTxContext().Origin.Bytes())
+
+	c.push(x)
 }
 
 func opCaller(c *state) {
-	c.push1().SetBytes(c.msg.Caller.Bytes())
+	x := uint256.Int{0}
+	x.SetBytes(c.msg.Caller.Bytes())
+
+	c.push(x)
 }
 
 func opCallValue(c *state) {
-	v := c.push1()
 	if value := c.msg.Value; value != nil {
-		v.Set(value)
+		uintValue, _ := uint256.FromBig(value)
+		c.push(*uintValue)
 	} else {
-		v.Set(zero)
+		c.push(uint256.Int{0})
 	}
-}
-
-func min(i, j uint64) uint64 {
-	if i < j {
-		return i
-	}
-
-	return j
 }
 
 func opCallDataLoad(c *state) {
@@ -693,17 +622,19 @@ func opCallDataLoad(c *state) {
 
 	bufPtr := bufPool.Get().(*[]byte)
 	buf := *bufPtr
-	c.setBytes(buf[:32], c.msg.Input, 32, offset)
+	c.setBytes(buf[:32], c.msg.Input, 32, *offset)
 	offset.SetBytes(buf[:32])
 	bufPool.Put(bufPtr)
 }
 
 func opCallDataSize(c *state) {
-	c.push1().SetUint64(uint64(len(c.msg.Input)))
+	x := uint256.NewInt(uint64(len(c.msg.Input)))
+	c.push(*x)
 }
 
 func opCodeSize(c *state) {
-	c.push1().SetUint64(uint64(len(c.code)))
+	x := uint256.NewInt(uint64(len(c.code)))
+	c.push(*x)
 }
 
 func opExtCodeSize(c *state) {
@@ -722,18 +653,22 @@ func opExtCodeSize(c *state) {
 		return
 	}
 
-	c.push1().SetUint64(uint64(c.host.GetCodeSize(addr)))
+	x := uint256.NewInt(uint64(c.host.GetCodeSize(addr)))
+	c.push(*x)
 }
 
 func opGasPrice(c *state) {
-	c.push1().SetBytes(c.host.GetTxContext().GasPrice.Bytes())
+	x := uint256.Int{0}
+	x.SetBytes(c.host.GetTxContext().GasPrice.Bytes())
+	c.push(x)
 }
 
 func opReturnDataSize(c *state) {
 	if !c.config.Byzantium {
 		c.exit(errOpCodeNotFound)
 	} else {
-		c.push1().SetUint64(uint64(len(c.returnData)))
+		x := uint256.NewInt(uint64(len(c.returnData)))
+		c.push(*x)
 	}
 }
 
@@ -759,27 +694,27 @@ func opExtCodeHash(c *state) {
 		return
 	}
 
-	v := c.push1()
-	if c.host.Empty(address) {
-		v.Set(zero)
-	} else {
+	v := uint256.Int{0}
+	if !c.host.Empty(address) {
 		v.SetBytes(c.host.GetCodeHash(address).Bytes())
 	}
+
+	c.push(v)
 }
 
 func opPC(c *state) {
-	c.push1().SetUint64(uint64(c.ip))
+	c.push(*uint256.NewInt(uint64(c.ip)))
 }
 
 func opMSize(c *state) {
-	c.push1().SetUint64(uint64(len(c.memory)))
+	c.push(*uint256.NewInt(uint64(len(c.memory))))
 }
 
 func opGas(c *state) {
-	c.push1().SetUint64(c.gas)
+	c.push(*uint256.NewInt(c.gas))
 }
 
-func (c *state) setBytes(dst, input []byte, size uint64, dataOffset *big.Int) {
+func (c *state) setBytes(dst, input []byte, size uint64, dataOffset uint256.Int) {
 	if !dataOffset.IsUint64() {
 		// overflow, copy 'size' 0 bytes to dst
 		for i := uint64(0); i < size; i++ {
@@ -877,7 +812,7 @@ func opReturnDataCopy(c *state) {
 	// 1. the dataOffset is uint64 (overflow check)
 	// 2. the sum of dataOffset and length overflows uint64
 	// 3. the length of return data has enough space to receive offset + length bytes
-	end := new(big.Int).Add(dataOffset, length)
+	end := new(big.Int).Add(dataOffset.ToBig(), length.ToBig())
 	endAddress := end.Uint64()
 
 	if !dataOffset.IsUint64() ||
@@ -936,40 +871,47 @@ func opCodeCopy(c *state) {
 func opBlockHash(c *state) {
 	num := c.top()
 
-	if !num.IsInt64() {
-		num.Set(zero)
+	num64, overflow := num.Uint64WithOverflow()
+
+	if overflow {
+		num.SetUint64(0)
 
 		return
 	}
 
-	n := num.Int64()
+	n := int64(num64)
 	lastBlock := c.host.GetTxContext().Number
 
 	if lastBlock-257 < n && n < lastBlock {
 		num.SetBytes(c.host.GetBlockHash(n).Bytes())
 	} else {
-		num.Set(zero)
+		num.SetUint64(0)
 	}
 }
 
 func opCoinbase(c *state) {
-	c.push1().SetBytes(c.host.GetTxContext().Coinbase.Bytes())
+	v := new(uint256.Int).SetBytes20(c.host.GetTxContext().Coinbase.Bytes())
+	c.push(*v)
 }
 
 func opTimestamp(c *state) {
-	c.push1().SetInt64(c.host.GetTxContext().Timestamp)
+	v := new(uint256.Int).SetUint64(uint64(c.host.GetTxContext().Timestamp))
+	c.push(*v)
 }
 
 func opNumber(c *state) {
-	c.push1().SetInt64(c.host.GetTxContext().Number)
+	v := new(uint256.Int).SetUint64((uint64)(c.host.GetTxContext().Number))
+	c.push(*v)
 }
 
 func opDifficulty(c *state) {
-	c.push1().SetBytes(c.host.GetTxContext().Difficulty.Bytes())
+	v := new(uint256.Int).SetBytes(c.host.GetTxContext().Difficulty.Bytes())
+	c.push(*v)
 }
 
 func opGasLimit(c *state) {
-	c.push1().SetInt64(c.host.GetTxContext().GasLimit)
+	v := new(uint256.Int).SetUint64((uint64)(c.host.GetTxContext().GasLimit))
+	c.push(*v)
 }
 
 func opBaseFee(c *state) {
@@ -979,7 +921,7 @@ func opBaseFee(c *state) {
 		return
 	}
 
-	c.push(c.host.GetTxContext().BaseFee)
+	c.push(*uint256.MustFromBig(c.host.GetTxContext().BaseFee))
 }
 
 func opSelfDestruct(c *state) {
@@ -1024,7 +966,8 @@ func opSelfDestruct(c *state) {
 }
 
 func opJump(c *state) {
-	if dest := c.pop(); c.validJumpdest(dest) {
+	dest := c.pop()
+	if c.validJumpdest(dest) {
 		c.ip = int(dest.Uint64() - 1)
 	} else {
 		c.exit(errInvalidJump)
@@ -1054,7 +997,7 @@ func opPush0(c *state) {
 		return
 	}
 
-	c.push(zero)
+	c.push(uint256.Int{0})
 }
 
 func opPush(n int) instruction {
@@ -1062,12 +1005,14 @@ func opPush(n int) instruction {
 		ins := c.code
 		ip := c.ip
 
-		v := c.push1()
+		d := uint256.Int{0}
 		if ip+1+n > len(ins) {
-			v.SetBytes(append(ins[ip+1:], make([]byte, n)...))
+			d.SetBytes(append(ins[ip+1:], make([]byte, n)...))
 		} else {
-			v.SetBytes(ins[ip+1 : ip+1+n])
+			d.SetBytes(ins[ip+1 : ip+1+n])
 		}
+
+		c.push(d)
 
 		c.ip += n
 	}
@@ -1076,10 +1021,10 @@ func opPush(n int) instruction {
 func opDup(n int) instruction {
 	return func(c *state) {
 		if !c.stackAtLeast(n) {
-			c.exit(&runtime.StackUnderflowError{StackLen: c.sp, Required: n})
+			c.exit(&runtime.StackUnderflowError{StackLen: c.stack.sp, Required: n})
 		} else {
 			val := c.peekAt(n)
-			c.push1().Set(val)
+			c.push(val)
 		}
 	}
 }
@@ -1087,7 +1032,7 @@ func opDup(n int) instruction {
 func opSwap(n int) instruction {
 	return func(c *state) {
 		if !c.stackAtLeast(n + 1) {
-			c.exit(&runtime.StackUnderflowError{StackLen: c.sp, Required: n + 1})
+			c.exit(&runtime.StackUnderflowError{StackLen: c.stack.sp, Required: n + 1})
 		} else {
 			c.swap(n)
 		}
@@ -1105,7 +1050,7 @@ func opLog(size int) instruction {
 		}
 
 		if !c.stackAtLeast(2 + size) {
-			c.exit(&runtime.StackUnderflowError{StackLen: c.sp, Required: 2 + size})
+			c.exit(&runtime.StackUnderflowError{StackLen: c.stack.sp, Required: 2 + size})
 
 			return
 		}
@@ -1115,7 +1060,8 @@ func opLog(size int) instruction {
 
 		topics := make([]types.Hash, size)
 		for i := 0; i < size; i++ {
-			topics[i] = bigToHash(c.pop())
+			v := c.pop()
+			topics[i] = bigToHash(v.ToBig())
 		}
 
 		var ok bool
@@ -1162,7 +1108,7 @@ func opCreate(op OpCode) instruction {
 
 		contract, err := c.buildCreateContract(op)
 		if err != nil {
-			c.push1().Set(zero)
+			c.push(uint256.Int{0})
 
 			if contract != nil {
 				c.gas += contract.Gas
@@ -1180,17 +1126,18 @@ func opCreate(op OpCode) instruction {
 		// Correct call
 		result := c.host.Callx(contract, c.host)
 
-		v := c.push1()
+		v := uint256.Int{0}
 		if op == CREATE && c.config.Homestead && errors.Is(result.Err, runtime.ErrCodeStoreOutOfGas) {
-			v.Set(zero)
+			v.SetUint64(0)
 		} else if op == CREATE && result.Failed() && !errors.Is(result.Err, runtime.ErrCodeStoreOutOfGas) {
-			v.Set(zero)
+			v.SetUint64(0)
 		} else if op == CREATE2 && result.Failed() {
-			v.Set(zero)
+			v.SetUint64(0)
 		} else {
 			v.SetBytes(contract.Address.Bytes())
 		}
 
+		c.push(v)
 		c.gas += result.GasLeft
 
 		if result.Reverted() {
@@ -1204,7 +1151,7 @@ func opCall(op OpCode) instruction {
 		c.resetReturnData()
 
 		if op == CALL && c.inStaticCall() {
-			if val := c.peekAt(3); val != nil && val.BitLen() > 0 {
+			if val := c.peekAt(3); val.BitLen() > 0 {
 				c.exit(errWriteProtection)
 
 				return
@@ -1244,7 +1191,7 @@ func opCall(op OpCode) instruction {
 
 		contract, offset, size, err := c.buildCallContract(op)
 		if err != nil {
-			c.push1().Set(zero)
+			c.push(uint256.Int{0})
 
 			if contract != nil {
 				c.gas += contract.Gas
@@ -1261,11 +1208,10 @@ func opCall(op OpCode) instruction {
 
 		result := c.host.Callx(contract, c.host)
 
-		v := c.push1()
 		if result.Succeeded() {
-			v.Set(one)
+			c.push(*uint256.NewInt(1))
 		} else {
-			v.Set(zero)
+			c.push(uint256.Int{0})
 		}
 
 		if result.Succeeded() || result.Reverted() {
@@ -1286,7 +1232,8 @@ func (c *state) buildCallContract(op OpCode) (*runtime.Contract, uint64, uint64,
 
 	var value *big.Int
 	if op == CALL || op == CALLCODE {
-		value = c.pop()
+		v := c.pop()
+		value = v.ToBig()
 	}
 
 	// input range
@@ -1351,7 +1298,6 @@ func (c *state) buildCallContract(op OpCode) (*runtime.Contract, uint64, uint64,
 
 			return nil, 0, 0, nil
 		}
-
 		gas = initialGas.Uint64()
 	}
 
@@ -1415,11 +1361,12 @@ func (c *state) buildCreateContract(op OpCode) (*runtime.Contract, error) {
 
 	var salt *big.Int
 	if op == CREATE2 {
-		salt = c.pop()
+		v := c.pop()
+		salt = v.ToBig()
 	}
 
 	// check if the value can be transferred
-	hasTransfer := value != nil && value.Sign() != 0
+	hasTransfer := value.Sign() != 0
 
 	// Calculate and consume gas cost
 
@@ -1442,7 +1389,7 @@ func (c *state) buildCreateContract(op OpCode) (*runtime.Contract, error) {
 	}
 
 	if hasTransfer {
-		if c.host.GetBalance(c.msg.Address).Cmp(value) < 0 {
+		if c.host.GetBalance(c.msg.Address).Cmp(value.ToBig()) < 0 {
 			return nil, types.ErrInsufficientFunds
 		}
 	}
@@ -1472,7 +1419,7 @@ func (c *state) buildCreateContract(op OpCode) (*runtime.Contract, error) {
 		c.msg.Origin,
 		c.msg.Address,
 		address,
-		value,
+		value.ToBig(),
 		gas,
 		input,
 	)
