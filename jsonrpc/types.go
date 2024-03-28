@@ -151,6 +151,12 @@ type block struct {
 	Uncles       []types.Hash        `json:"uncles"`
 }
 
+// SignTransactionResult represents a RLP encoded signed transaction.
+type SignTransactionResult struct {
+	Raw []byte             `json:"raw"`
+	Tx  *types.Transaction `json:"tx"`
+}
+
 func (b *block) Copy() *block {
 	bb := new(block)
 	*bb = *b

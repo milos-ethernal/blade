@@ -28,6 +28,9 @@ type ethTxPoolStore interface {
 	// AddTx adds a new transaction to the tx pool
 	AddTx(tx *types.Transaction) error
 
+	// CheckTx ensures the transaction conforms
+	CheckTx(tx *types.Transaction) error
+
 	// GetPendingTx gets the pending transaction from the transaction pool, if it's present
 	GetPendingTx(txHash types.Hash) (*types.Transaction, bool)
 
@@ -377,6 +380,54 @@ func (e *Eth) SendRawTransaction(buf argBytes) (interface{}, error) {
 	}
 
 	return tx.Hash().String(), nil
+}
+
+// SignTransaction will sign the given transaction with the from account.
+// The node needs to have the private key of the account corresponding with
+// the given from address and it needs to be unlocked.
+func (e *Eth) SignTransaction(args *txnArgs) (interface{}, error) {
+	if args.Gas == nil {
+		return nil, fmt.Errorf("gas not specified")
+	}
+
+	if args.GasPrice == nil && (args.MaxPriorityFeePerGas == nil || args.MaxFeePerGas == nil) {
+		return nil, fmt.Errorf("missing gasPrice or maxFeePerGas/maxPriorityFeePerGas")
+	}
+
+	if args.Nonce == nil {
+		return nil, fmt.Errorf("nonce not specified")
+	}
+
+	if e.ecdsaKey == nil {
+		return nil, errMissingPrivateKey
+	}
+
+	if err := args.setDefaults(e.priceLimit, e); err != nil {
+		return nil, err
+	}
+
+	tx, err := DecodeTxn(args, e.store, true)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = e.store.CheckTx(tx); err != nil { /*  */
+		return nil, err
+	}
+
+	cryptoECDSAPrivKey, err := polyWallet.AdaptECDSAPrivKey(e.ecdsaKey)
+	if err != nil {
+		return nil, err
+	}
+
+	signedTx, err := e.txSigner.SignTx(tx, cryptoECDSAPrivKey)
+	if err != nil {
+		return nil, err
+	}
+
+	data := signedTx.MarshalRLP()
+
+	return &SignTransactionResult{data, signedTx}, nil
 }
 
 // SendTransaction creates a transaction for the given argument, sign it and submit it to the

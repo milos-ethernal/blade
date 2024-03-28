@@ -30,6 +30,38 @@ func TestEth_TxnPool_SendRawTransaction(t *testing.T) {
 	}
 }
 
+func TestEth_TxnPool_SignTransaction(t *testing.T) {
+	store := &mockStoreTxn{}
+	store.AddAccount(addr0)
+
+	eth := newTestEthEndpoint(store)
+	txToSend := &txnArgs{
+		From:     &addr0,
+		To:       &addr1,
+		Gas:      argUintPtr(100000),
+		GasPrice: argBytesPtr([]byte{0x64}),
+		Value:    argBytesPtr([]byte{0x64}),
+		Data:     nil,
+		Nonce:    argUintPtr(0),
+	}
+
+	contractKey, err := crypto.GenerateECDSAKey()
+	assert.NoError(t, err)
+
+	eth.ecdsaKey = contractKey
+
+	defaultChainID := uint64(100)
+	eth.txSigner = crypto.NewSigner(chain.AllForksEnabled.At(0), defaultChainID)
+
+	res, err := eth.SignTransaction(txToSend)
+	assert.NoError(t, err)
+	assert.NotNil(t, res)
+
+	bres := res.(*SignTransactionResult)
+	assert.NotEqual(t, bres.Tx.Hash(), types.ZeroHash)
+	assert.NotNil(t, bres.Raw)
+}
+
 func TestEth_TxnPool_SendTransaction(t *testing.T) {
 	store := &mockStoreTxn{}
 	store.AddAccount(addr0)
@@ -70,6 +102,10 @@ func (m *mockStoreTxn) AddTx(tx *types.Transaction) error {
 
 	tx.ComputeHash()
 
+	return nil
+}
+
+func (m *mockStoreTxn) CheckTx(tx *types.Transaction) error {
 	return nil
 }
 
