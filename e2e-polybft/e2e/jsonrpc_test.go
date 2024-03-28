@@ -299,7 +299,7 @@ func TestE2E_JsonRPC(t *testing.T) {
 		require.NoError(t, err)
 
 		txn := &bladeRPC.CallMsg{
-			From: types.Address(acctZeroBalance.Address()),
+			From: acctZeroBalance.Address(),
 			To:   &target,
 			Data: input,
 		}
