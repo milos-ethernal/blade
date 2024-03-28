@@ -295,11 +295,10 @@ func TestE2E_JsonRPC(t *testing.T) {
 		target := types.Address(deployTxn.Receipt().ContractAddress)
 		input := contractsapi.TestSimple.Abi.GetMethod("getValue").ID()
 
-		acctZeroBalance, err := crypto.GenerateECDSAKey()
 		require.NoError(t, err)
 
 		txn := &bladeRPC.CallMsg{
-			From: acctZeroBalance.Address(),
+			From: preminedAcct.Address(),
 			To:   &target,
 			Data: input,
 		}
