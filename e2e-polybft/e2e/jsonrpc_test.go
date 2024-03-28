@@ -288,23 +288,23 @@ func TestE2E_JsonRPC(t *testing.T) {
 	})
 
 	t.Run("eth_sendTransaction", func(t *testing.T) {
-		receiver := types.StringToAddress("0xDEADFFFF")
-		gasPrice, err := newEthClient.GasPrice()
+		deployTxn := cluster.Deploy(t, preminedAcct, contractsapi.TestSimple.Bytecode)
+		require.NoError(t, deployTxn.Wait())
+		require.True(t, deployTxn.Succeed())
+
+		target := types.Address(deployTxn.Receipt().ContractAddress)
+		input := contractsapi.TestSimple.Abi.GetMethod("getValue").ID()
+
+		acctZeroBalance, err := crypto.GenerateECDSAKey()
 		require.NoError(t, err)
 
-		_, newAccountAddr := tests.GenerateKeyAndAddr(t)
+		txn := &bladeRPC.CallMsg{
+			From: types.Address(acctZeroBalance.Address()),
+			To:   &target,
+			Data: input,
+		}
 
-		txn := types.NewTx(
-			types.NewLegacyTx(
-				types.WithNonce(0),
-				types.WithFrom(newAccountAddr),
-				types.WithTo(&receiver),
-				types.WithValue(ethgo.Gwei(1)),
-				types.WithGas(21000),
-				types.WithGasPrice(new(big.Int).SetUint64(gasPrice)),
-			))
-
-		hash, err := newEthClient.SendTransaction(txn)
+		hash, err := newEthClient.SendTransactionCallMsg(txn)
 		require.NoError(t, err)
 		require.NotEqual(t, types.ZeroHash, hash)
 	})

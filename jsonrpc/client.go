@@ -105,6 +105,14 @@ func (e *EthClient) SendTransaction(txn *types.Transaction) (types.Hash, error) 
 	return hash, err
 }
 
+// SendTransaction creates a transaction for the given argument, sign it and submit it to the
+func (e *EthClient) SendTransactionCallMsg(msg *CallMsg) (types.Hash, error) {
+	var hash types.Hash
+	err := e.client.Call("eth_sendTransaction", &hash, msg)
+
+	return hash, err
+}
+
 // GetTransactionReceipt returns the receipt of a transaction by transaction hash
 func (e *EthClient) GetTransactionReceipt(hash types.Hash) (*ethgo.Receipt, error) {
 	var receipt *ethgo.Receipt
