@@ -106,9 +106,17 @@ func (e *EthClient) SendTransaction(txn *types.Transaction) (types.Hash, error) 
 }
 
 // SendTransaction creates new message call transaction or a contract creation
-func (e *EthClient) SignTransaction(txn *types.Transaction) (*SignTransactionResult, error) {
+func (e *EthClient) SendTransactionCallMsg(msg *CallMsg) (types.Hash, error) {
+	var hash types.Hash
+	err := e.client.Call("eth_sendTransaction", &hash, msg)
+
+	return hash, err
+}
+
+// SendTransaction creates new message call transaction or a contract creation
+func (e *EthClient) SignTransaction(msg *CallMsg) (*SignTransactionResult, error) {
 	var signTransactionResult *SignTransactionResult
-	err := e.client.Call("eth_signTransaction", &signTransactionResult, txn)
+	err := e.client.Call("eth_signTransaction", &signTransactionResult, msg)
 
 	return signTransactionResult, err
 }

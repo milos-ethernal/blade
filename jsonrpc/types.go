@@ -153,7 +153,7 @@ type block struct {
 
 // SignTransactionResult represents a RLP encoded signed transaction.
 type SignTransactionResult struct {
-	Raw []byte             `json:"raw"`
+	Raw *argBytes          `json:"raw"`
 	Tx  *types.Transaction `json:"tx"`
 }
 
@@ -734,16 +734,19 @@ func (s StateOverride) MarshalJSON() ([]byte, error) {
 
 // CallMsg contains parameters for contract calls
 type CallMsg struct {
-	From      types.Address  // the sender of the 'transaction'
-	To        *types.Address // the destination contract (nil for contract creation)
-	Gas       uint64         // if 0, the call executes with near-infinite gas
-	GasPrice  *big.Int       // wei <-> gas exchange ratio
-	GasFeeCap *big.Int       // EIP-1559 fee cap per gas
-	GasTipCap *big.Int       // EIP-1559 tip per gas
-	Value     *big.Int       // amount of wei sent along with the call
-	Data      []byte         // input data, usually an ABI-encoded contract method invocation
-
-	AccessList types.TxAccessList // EIP-2930 access list
+	From                 types.Address      // the sender of the 'transaction'
+	To                   *types.Address     // the destination contract (nil for contract creation)
+	Gas                  uint64             // if 0, the call executes with near-infinite gas
+	GasPrice             *big.Int           // wei <-> gas exchange ratio
+	MaxFeePerGas         *big.Int           // EIP-1559 fee cap per gas
+	MaxPriorityFeePerGas *big.Int           // EIP-1559 tip per gas
+	Value                *big.Int           // amount of wei sent along with the call
+	Data                 []byte             // input data, usually an ABI-encoded contract method invocation
+	Input                *big.Int           // input
+	Nonce                uint64             // nonce
+	Type                 uint64             // type
+	AccessList           types.TxAccessList // EIP-2930 access list
+	ChainID              *big.Int           // ChainID
 }
 
 // MarshalJSON implements the Marshal interface.
@@ -774,16 +777,32 @@ func (c *CallMsg) MarshalJSON() ([]byte, error) {
 		o.Set("value", a.NewString(fmt.Sprintf("0x%x", c.Value)))
 	}
 
-	if c.GasFeeCap != nil {
-		o.Set("maxFeePerGas", a.NewString(fmt.Sprintf("0x%x", c.GasFeeCap)))
+	if c.MaxFeePerGas != nil {
+		o.Set("maxFeePerGas", a.NewString(fmt.Sprintf("0x%x", c.MaxFeePerGas)))
 	}
 
-	if c.GasTipCap != nil {
-		o.Set("maxPriorityFeePerGas", a.NewString(fmt.Sprintf("0x%x", c.GasTipCap)))
+	if c.MaxPriorityFeePerGas != nil {
+		o.Set("maxPriorityFeePerGas", a.NewString(fmt.Sprintf("0x%x", c.MaxPriorityFeePerGas)))
+	}
+
+	if c.Input != nil {
+		o.Set("input", a.NewString(fmt.Sprintf("0x%x", c.Input)))
+	}
+
+	if c.Nonce != 0 {
+		o.Set("nonce", a.NewString(fmt.Sprintf("0x%x", c.Nonce)))
+	}
+
+	if c.Type != 0 {
+		o.Set("type", a.NewString(fmt.Sprintf("0x%x", c.Type)))
 	}
 
 	if c.AccessList != nil {
 		o.Set("accessList", c.AccessList.MarshalJSONWith(a))
+	}
+
+	if c.ChainID != nil {
+		o.Set("chainID", a.NewString(fmt.Sprintf("0x%x", c.ChainID)))
 	}
 
 	res := o.MarshalTo(nil)

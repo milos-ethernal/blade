@@ -288,80 +288,51 @@ func TestE2E_JsonRPC(t *testing.T) {
 	})
 
 	t.Run("eth_sendTransaction", func(t *testing.T) {
-		receiver := types.StringToAddress("0xDEADFFFF")
-		tokenAmount := ethgo.Ether(1)
+		deployTxn := cluster.Deploy(t, preminedAcct, contractsapi.TestSimple.Bytecode)
+		require.NoError(t, deployTxn.Wait())
+		require.True(t, deployTxn.Succeed())
 
-		chainID, err := newEthClient.ChainID()
-		require.NoError(t, err)
+		target := types.Address(deployTxn.Receipt().ContractAddress)
+		input := contractsapi.TestSimple.Abi.GetMethod("getValue").ID()
 
 		gasPrice, err := newEthClient.GasPrice()
 		require.NoError(t, err)
 
-		newAccountKey, newAccountAddr := tests.GenerateKeyAndAddr(t)
+		txn := &bladeRPC.CallMsg{
+			From:     types.ZeroAddress,
+			To:       &target,
+			Gas:      92100,
+			GasPrice: new(big.Int).SetUint64(gasPrice),
+			Nonce:    1,
+			Data:     input,
+		}
 
-		transferTxn := cluster.Transfer(t, preminedAcct, newAccountAddr, tokenAmount)
-		require.NoError(t, transferTxn.Wait())
-		require.True(t, transferTxn.Succeed())
-
-		newAccountBalance, err := newEthClient.GetBalance(newAccountAddr, bladeRPC.LatestBlockNumberOrHash)
-		require.NoError(t, err)
-		require.Equal(t, tokenAmount, newAccountBalance)
-
-		txn := types.NewTx(
-			types.NewLegacyTx(
-				types.WithNonce(0),
-				types.WithFrom(newAccountAddr),
-				types.WithTo(&receiver),
-				types.WithValue(ethgo.Gwei(1)),
-				types.WithGas(21000),
-				types.WithGasPrice(new(big.Int).SetUint64(gasPrice)),
-			))
-
-		signedTxn, err := crypto.NewLondonSigner(chainID.Uint64()).SignTx(txn, newAccountKey)
-		require.NoError(t, err)
-
-		hash, err := newEthClient.SendTransaction(signedTxn)
+		hash, err := newEthClient.SendTransactionCallMsg(txn)
 		require.NoError(t, err)
 		require.NotEqual(t, types.ZeroHash, hash)
 	})
 
 	t.Run("eth_signTransaction", func(t *testing.T) {
 		receiver := types.StringToAddress("0xDEADFFFF")
-		tokenAmount := ethgo.Ether(1)
 
-		chainID, err := newEthClient.ChainID()
-		require.NoError(t, err)
+		input := contractsapi.TestSimple.Abi.GetMethod("getValue").ID()
 
 		gasPrice, err := newEthClient.GasPrice()
 		require.NoError(t, err)
 
-		newAccountKey, newAccountAddr := tests.GenerateKeyAndAddr(t)
+		txn := &bladeRPC.CallMsg{
+			From:     types.ZeroAddress,
+			To:       &receiver,
+			Gas:      2100,
+			GasPrice: new(big.Int).SetUint64(gasPrice),
+			Nonce:    1,
+			Data:     input,
+		}
 
-		transferTxn := cluster.Transfer(t, preminedAcct, newAccountAddr, tokenAmount)
-		require.NoError(t, transferTxn.Wait())
-		require.True(t, transferTxn.Succeed())
-
-		newAccountBalance, err := newEthClient.GetBalance(newAccountAddr, bladeRPC.LatestBlockNumberOrHash)
+		res, err := newEthClient.SignTransaction(txn)
 		require.NoError(t, err)
-		require.Equal(t, tokenAmount, newAccountBalance)
-
-		txn := types.NewTx(
-			types.NewLegacyTx(
-				types.WithNonce(0),
-				types.WithFrom(newAccountAddr),
-				types.WithTo(&receiver),
-				types.WithValue(ethgo.Gwei(1)),
-				types.WithGas(21000),
-				types.WithGasPrice(new(big.Int).SetUint64(gasPrice)),
-			))
-
-		signedTxn, err := crypto.NewLondonSigner(chainID.Uint64()).SignTx(txn, newAccountKey)
-		require.NoError(t, err)
-
-		res, err := newEthClient.SignTransaction(signedTxn)
-		require.NoError(t, err)
-		require.NotEqual(t, types.ZeroHash, res.Tx.Hash())
+		require.NotEqual(t, types.ZeroHash, res.Tx.From)
 		require.NotNil(t, res.Raw)
-		require.NotEqual(t, 0, len(res.Raw))
+		require.NotEqual(t, 0, len(*res.Raw))
 	})
 }

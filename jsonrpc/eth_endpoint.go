@@ -151,6 +151,7 @@ func (e *Eth) ChainId() (interface{}, error) {
 	return argUintPtr(e.chainID), nil
 }
 
+// Accounts returns the collection of accounts this node manages.
 func (e *Eth) Accounts() (interface{}, error) {
 	if e.ecdsaKey == nil {
 		return nil, errMissingPrivateKey
@@ -411,10 +412,6 @@ func (e *Eth) SignTransaction(args *txnArgs) (interface{}, error) {
 		return nil, err
 	}
 
-	if err = e.store.CheckTx(tx); err != nil { /*  */
-		return nil, err
-	}
-
 	cryptoECDSAPrivKey, err := polyWallet.AdaptECDSAPrivKey(e.ecdsaKey)
 	if err != nil {
 		return nil, err
@@ -425,9 +422,13 @@ func (e *Eth) SignTransaction(args *txnArgs) (interface{}, error) {
 		return nil, err
 	}
 
+	if err = e.store.CheckTx(signedTx); err != nil { /*  */
+		return nil, err
+	}
+
 	data := signedTx.MarshalRLP()
 
-	return &SignTransactionResult{data, signedTx}, nil
+	return &SignTransactionResult{argBytesPtr(data), signedTx}, nil
 }
 
 // SendTransaction creates a transaction for the given argument, sign it and submit it to the
