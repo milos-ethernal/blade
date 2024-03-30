@@ -323,7 +323,7 @@ func TestE2E_JsonRPC(t *testing.T) {
 		txn := &bladeRPC.CallMsg{
 			From:     types.ZeroAddress,
 			To:       &receiver,
-			Gas:      2100,
+			Gas:      92100,
 			GasPrice: new(big.Int).SetUint64(gasPrice),
 			Nonce:    1,
 			Data:     input,
