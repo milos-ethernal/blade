@@ -97,6 +97,22 @@ func (e *EthClient) SendRawTransaction(data []byte) (types.Hash, error) {
 	return hash, err
 }
 
+// GetHeaderByHash returns the requested header by hash.
+func (e *EthClient) GetHeaderByHash(hash types.Hash) (*types.Header, error) {
+	var header types.Header
+	err := e.client.Call("eth_getHeaderByHash", &header, hash)
+
+	return &header, err
+}
+
+// GetHeaderByNumber returns the requested canonical block header.
+func (e *EthClient) GetHeaderByNumber(blockNumber BlockNumber) (*types.Header, error) {
+	var header types.Header
+	err := e.client.Call("eth_getHeaderByNumber", &header, blockNumber)
+
+	return &header, err
+}
+
 // SendTransaction creates new message call transaction or a contract creation
 func (e *EthClient) SendTransaction(txn *types.Transaction) (types.Hash, error) {
 	var hash types.Hash

@@ -286,4 +286,36 @@ func TestE2E_JsonRPC(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEqual(t, types.ZeroHash, hash)
 	})
+
+	t.Run("eth_getHeaderByNumber", func(t *testing.T) {
+		key1, err := crypto.GenerateECDSAKey()
+		require.NoError(t, err)
+
+		txn := cluster.Transfer(t, preminedAcct, key1.Address(), one)
+		require.NoError(t, txn.Wait())
+		require.True(t, txn.Succeed())
+		txReceipt := txn.Receipt()
+
+		header, err := newEthClient.GetHeaderByNumber(bladeRPC.BlockNumber(txReceipt.BlockNumber))
+		require.NoError(t, err)
+
+		require.Equal(t, txReceipt.BlockNumber, header.Number)
+		require.Equal(t, txReceipt.BlockHash, ethgo.Hash(header.Hash))
+	})
+
+	t.Run("eth_getHeaderByHash", func(t *testing.T) {
+		key1, err := crypto.GenerateECDSAKey()
+		require.NoError(t, err)
+
+		txn := cluster.Transfer(t, preminedAcct, key1.Address(), one)
+		require.NoError(t, txn.Wait())
+		require.True(t, txn.Succeed())
+		txReceipt := txn.Receipt()
+
+		header, err := newEthClient.GetHeaderByHash(types.Hash(txReceipt.BlockHash))
+		require.NoError(t, err)
+
+		require.Equal(t, txReceipt.BlockNumber, header.Number)
+		require.Equal(t, txReceipt.BlockHash, header.Hash)
+	})
 }
