@@ -399,30 +399,13 @@ func (e *Eth) SignTransaction(args *txnArgs) (interface{}, error) {
 		return nil, fmt.Errorf("nonce not specified")
 	}
 
-	if e.ecdsaKey == nil {
-		return nil, errMissingPrivateKey
-	}
-
-	if err := args.setDefaults(e.priceLimit, e); err != nil {
-		return nil, err
-	}
-
-	tx, err := DecodeTxn(args, e.store, true)
+	signedTx, err := e.signTx(args)
 	if err != nil {
 		return nil, err
 	}
 
-	cryptoECDSAPrivKey, err := polyWallet.AdaptECDSAPrivKey(e.ecdsaKey)
+	err = e.store.CheckTx(signedTx)
 	if err != nil {
-		return nil, err
-	}
-
-	signedTx, err := e.txSigner.SignTx(tx, cryptoECDSAPrivKey)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = e.store.CheckTx(signedTx); err != nil { /*  */
 		return nil, err
 	}
 
@@ -434,6 +417,20 @@ func (e *Eth) SignTransaction(args *txnArgs) (interface{}, error) {
 // SendTransaction creates a transaction for the given argument, sign it and submit it to the
 // transaction pool.
 func (e *Eth) SendTransaction(args *txnArgs) (interface{}, error) {
+	signedTx, err := e.signTx(args)
+	if err != nil {
+		return nil, err
+	}
+
+	err = e.store.AddTx(signedTx)
+	if err != nil {
+		return nil, err
+	}
+
+	return signedTx.Hash().String(), nil
+}
+
+func (e *Eth) signTx(args *txnArgs) (*types.Transaction, error) {
 	if e.ecdsaKey == nil {
 		return nil, errMissingPrivateKey
 	}
@@ -457,11 +454,7 @@ func (e *Eth) SendTransaction(args *txnArgs) (interface{}, error) {
 		return nil, err
 	}
 
-	if err := e.store.AddTx(signedTx); err != nil {
-		return nil, err
-	}
-
-	return signedTx.Hash().String(), nil
+	return signedTx, nil
 }
 
 // GetTransactionByHash returns a transaction by its hash.

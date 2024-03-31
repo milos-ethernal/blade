@@ -293,6 +293,7 @@ func TestE2E_JsonRPC(t *testing.T) {
 		require.True(t, deployTxn.Succeed())
 
 		newNonce, err := newEthClient.GetNonce(preminedAcct.Address(), bladeRPC.LatestBlockNumberOrHash)
+		require.NoError(t, err)
 
 		target := types.Address(deployTxn.Receipt().ContractAddress)
 		input := contractsapi.TestSimple.Abi.GetMethod("getValue").ID()
@@ -319,10 +320,11 @@ func TestE2E_JsonRPC(t *testing.T) {
 		require.NoError(t, deployTxn.Wait())
 		require.True(t, deployTxn.Succeed())
 
-		newNonce, err := newEthClient.GetNonce(preminedAcct.Address(), bladeRPC.LatestBlockNumberOrHash)
-
 		target := types.Address(deployTxn.Receipt().ContractAddress)
 		input := contractsapi.TestSimple.Abi.GetMethod("getValue").ID()
+
+		newNonce, err := newEthClient.GetNonce(target, bladeRPC.LatestBlockNumberOrHash)
+		require.NoError(t, err)
 
 		gasPrice, err := newEthClient.GasPrice()
 		require.NoError(t, err)
@@ -332,7 +334,7 @@ func TestE2E_JsonRPC(t *testing.T) {
 			To:       &target,
 			Gas:      92100,
 			GasPrice: new(big.Int).SetUint64(gasPrice),
-			Nonce:    newNonce,
+			Nonce:    newNonce + 1,
 			Data:     input,
 		}
 
