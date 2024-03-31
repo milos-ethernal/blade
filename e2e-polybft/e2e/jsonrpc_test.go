@@ -320,20 +320,16 @@ func TestE2E_JsonRPC(t *testing.T) {
 		target := types.Address(deployTxn.Receipt().ContractAddress)
 		input := contractsapi.TestSimple.Abi.GetMethod("getValue").ID()
 
-		maxPriorityFeePerGas, err := newEthClient.MaxPriorityFeePerGas()
-		require.NoError(t, err)
-
 		gasPrice, err := newEthClient.GasPrice()
 		require.NoError(t, err)
 
 		txn := &bladeRPC.CallMsg{
-			From:                 types.ZeroAddress,
-			To:                   &target,
-			Gas:                  92100,
-			GasPrice:             new(big.Int).SetUint64(gasPrice),
-			MaxPriorityFeePerGas: maxPriorityFeePerGas,
-			Nonce:                1,
-			Data:                 input,
+			From:     types.ZeroAddress,
+			To:       &target,
+			Gas:      92100,
+			GasPrice: new(big.Int).SetUint64(gasPrice),
+			Nonce:    1,
+			Data:     input,
 		}
 
 		res, err := newEthClient.SignTransaction(txn)
