@@ -323,18 +323,21 @@ func TestE2E_JsonRPC(t *testing.T) {
 		target := types.Address(deployTxn.Receipt().ContractAddress)
 		input := contractsapi.TestSimple.Abi.GetMethod("getValue").ID()
 
-		newNonce, err := newEthClient.GetNonce(target, bladeRPC.LatestBlockNumberOrHash)
+		acctZeroBalance, err := crypto.GenerateECDSAKey()
+		require.NoError(t, err)
+
+		newNonce, err := newEthClient.GetNonce(preminedAcct.Address(), bladeRPC.LatestBlockNumberOrHash)
 		require.NoError(t, err)
 
 		gasPrice, err := newEthClient.GasPrice()
 		require.NoError(t, err)
 
 		txn := &bladeRPC.CallMsg{
-			From:     types.ZeroAddress,
+			From:     acctZeroBalance.Address(),
 			To:       &target,
 			Gas:      92100,
 			GasPrice: new(big.Int).SetUint64(gasPrice),
-			Nonce:    newNonce + 1,
+			Nonce:    newNonce,
 			Data:     input,
 		}
 
