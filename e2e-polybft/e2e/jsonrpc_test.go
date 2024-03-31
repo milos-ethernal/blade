@@ -313,20 +313,27 @@ func TestE2E_JsonRPC(t *testing.T) {
 	})
 
 	t.Run("eth_signTransaction", func(t *testing.T) {
-		receiver := types.StringToAddress("0xDEADFFFF")
+		deployTxn := cluster.Deploy(t, preminedAcct, contractsapi.TestSimple.Bytecode)
+		require.NoError(t, deployTxn.Wait())
+		require.True(t, deployTxn.Succeed())
 
+		target := types.Address(deployTxn.Receipt().ContractAddress)
 		input := contractsapi.TestSimple.Abi.GetMethod("getValue").ID()
+
+		maxPriorityFeePerGas, err := newEthClient.MaxPriorityFeePerGas()
+		require.NoError(t, err)
 
 		gasPrice, err := newEthClient.GasPrice()
 		require.NoError(t, err)
 
 		txn := &bladeRPC.CallMsg{
-			From:     types.ZeroAddress,
-			To:       &receiver,
-			Gas:      92100,
-			GasPrice: new(big.Int).SetUint64(gasPrice),
-			Nonce:    1,
-			Data:     input,
+			From:                 types.ZeroAddress,
+			To:                   &target,
+			Gas:                  92100,
+			GasPrice:             new(big.Int).SetUint64(gasPrice),
+			MaxPriorityFeePerGas: maxPriorityFeePerGas,
+			Nonce:                1,
+			Data:                 input,
 		}
 
 		res, err := newEthClient.SignTransaction(txn)
