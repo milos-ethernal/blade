@@ -307,4 +307,19 @@ func TestE2E_JsonRPC(t *testing.T) {
 		require.Equal(t, txReceipt.BlockNumber, header.Number)
 		require.Equal(t, types.Hash(txReceipt.BlockHash), header.Hash)
 	})
+
+	t.Run("eth_getBlockReceipts", func(t *testing.T) {
+		txn := cluster.Transfer(t, preminedAcct, types.StringToAddress("0xDEADBEEF"), one)
+		require.True(t, txn.Succeed())
+		receipt := txn.Receipt()
+
+		receipts, err := newEthClient.GetBlockReceipts(bladeRPC.BlockNumber(receipt.BlockNumber))
+
+		require.NoError(t, err)
+		require.NotNil(t, receipts)
+		require.NotEqual(t, 0, len(receipts))
+
+		require.Equal(t, receipts[0].BlockNumber, receipt.BlockNumber)
+		require.Equal(t, receipts[0].BlockHash, receipt.BlockHash)
+	})
 }

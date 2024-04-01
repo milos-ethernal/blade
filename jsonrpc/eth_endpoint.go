@@ -487,7 +487,7 @@ func (e *Eth) GetBlockReceipts(number BlockNumber) (interface{}, error) {
 		return nil, nil
 	}
 
-	resReceipts := make([]*receipt, receiptsNum)
+	resReceipts := make([]*Receipt, receiptsNum)
 	logIndex := 0
 
 	for i, transaction := range block.Transactions {
