@@ -316,6 +316,6 @@ func TestE2E_JsonRPC(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, txReceipt.BlockNumber, header.Number)
-		require.Equal(t, txReceipt.BlockHash, header.Hash)
+		require.Equal(t, types.Hash(txReceipt.BlockHash), header.Hash)
 	})
 }
