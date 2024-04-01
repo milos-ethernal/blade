@@ -362,7 +362,7 @@ func TestEth_GetTransactionReceipt(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, res)
 
-		response := res.(*receipt)
+		response := res.(*Receipt)
 		assert.Equal(t, txn1.Hash(), response.TxHash)
 		assert.Equal(t, block.Hash(), response.BlockHash)
 		assert.NotNil(t, response.Logs)
@@ -424,7 +424,7 @@ func TestEth_GetBlockReceipts(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, res)
 
-	response := res.([]*receipt)
+	response := res.([]*Receipt)
 	assert.Equal(t, txn1.Hash(), response[1].TxHash)
 	assert.Equal(t, 2, len(response))
 	assert.Equal(t, block.Hash(), response[1].BlockHash)
