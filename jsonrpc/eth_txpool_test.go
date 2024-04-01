@@ -58,7 +58,7 @@ func TestEth_TxnPool_SignTransaction(t *testing.T) {
 	assert.NotNil(t, res)
 
 	bres := res.(*SignTransactionResult)
-	assert.NotEqual(t, bres.Tx.Hash(), types.ZeroHash)
+	assert.NotEqual(t, bres.Tx.Hash, types.ZeroHash)
 	assert.NotNil(t, bres.Raw)
 }
 
