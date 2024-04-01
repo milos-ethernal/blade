@@ -325,7 +325,10 @@ func TestE2E_JsonRPC(t *testing.T) {
 
 		zeroAddress := types.ZeroAddress
 
-		newNonce, err := newEthClient.GetNonce(zeroAddress, bladeRPC.LatestBlockNumberOrHash)
+		newNonce, err := newEthClient.GetNonce(target, bladeRPC.LatestBlockNumberOrHash)
+		require.NoError(t, err)
+
+		chainID, err := newEthClient.ChainID()
 		require.NoError(t, err)
 
 		gasPrice, err := newEthClient.GasPrice()
@@ -334,10 +337,13 @@ func TestE2E_JsonRPC(t *testing.T) {
 		txn := &bladeRPC.CallMsg{
 			From:     zeroAddress,
 			To:       &target,
-			Gas:      92100,
+			Gas:      2100,
 			GasPrice: new(big.Int).SetUint64(gasPrice),
-			Nonce:    newNonce,
-			Data:     input,
+			//MaxPriorityFeePerGas: new(big.Int).SetUint64(0),
+			//MaxFeePerGas:         new(big.Int).SetUint64(10),
+			Nonce:   newNonce,
+			Data:    input,
+			ChainID: chainID,
 		}
 
 		res, err := newEthClient.SignTransaction(txn)

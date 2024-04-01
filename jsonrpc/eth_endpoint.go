@@ -299,7 +299,7 @@ func (e *Eth) CreateAccessList(arg *txnArgs, filter BlockNumberOrHash) (interfac
 		return nil, err
 	}
 
-	res := &accessListResult{
+	res := &AccessListResult{
 		Accesslist: result.AccessList.ToTxAccessList(),
 		Error:      result.Err,
 		GasUsed:    argUint64(result.GasUsed),
@@ -404,14 +404,14 @@ func (e *Eth) SignTransaction(args *txnArgs) (interface{}, error) {
 		return nil, err
 	}
 
-	err = e.store.CheckTx(signedTx)
-	if err != nil {
-		return nil, err
-	}
-
 	data := signedTx.MarshalRLP()
 
-	return &SignTransactionResult{argBytesPtr(data), signedTx}, nil
+	res := &SignTransactionResult{
+		Raw: argBytesPtr(data),
+		Tx:  toPendingTransaction(signedTx),
+	}
+
+	return res, nil
 }
 
 // SendTransaction creates a transaction for the given argument, sign it and submit it to the

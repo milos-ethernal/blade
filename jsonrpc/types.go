@@ -138,7 +138,7 @@ type header struct {
 	BaseFee         argUint64   `json:"baseFeePerGas,omitempty"`
 }
 
-type accessListResult struct {
+type AccessListResult struct {
 	Accesslist types.TxAccessList `json:"accessList"`
 	Error      error              `json:"error,omitempty"`
 	GasUsed    argUint64          `json:"gasUsed"`
@@ -153,8 +153,8 @@ type block struct {
 
 // SignTransactionResult represents a RLP encoded signed transaction.
 type SignTransactionResult struct {
-	Raw *argBytes          `json:"raw"`
-	Tx  *types.Transaction `json:"tx"`
+	Raw *argBytes    `json:"raw"`
+	Tx  *transaction `json:"tx"`
 }
 
 func (b *block) Copy() *block {
