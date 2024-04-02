@@ -46,8 +46,8 @@ jobs:
       environment: nightly
       block_gas_limit: "200000000"
       block_time: "2"
-      max_slots: "276480"
-      max_enqueued: "276480"
+      max_slots: "16777216"
+      max_enqueued: "16777216"
       is_london_fork_active: true
       is_bridge_active: false
       notification: false
@@ -123,8 +123,8 @@ jobs:
       environment: nightly
       block_gas_limit: "200000000"
       block_time: "2"
-      max_slots: "276480"
-      max_enqueued: "276480"
+      max_slots: "16777216"
+      max_enqueued: "16777216"
       is_london_fork_active: true
       is_bridge_active: false
       logs: true
