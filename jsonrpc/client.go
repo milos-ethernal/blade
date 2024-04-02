@@ -113,6 +113,14 @@ func (e *EthClient) GetBlockReceipts(blockNumber BlockNumber) ([]*Receipt, error
 	return receipts, err
 }
 
+// CreateAccessList creates a EIP-2930 type AccessList for the given transaction.
+func (e *EthClient) CreateAccessList(msg *CallMsg, blockNumber BlockNumberOrHash) (*accessListResult, error) {
+	var accessListResult accessListResult
+	err := e.client.Call("eth_createAccessList", &accessListResult, msg, blockNumber.String())
+
+	return &accessListResult, err
+}
+
 // GetHeaderByNumber returns the requested canonical block header.
 func (e *EthClient) GetHeaderByNumber(blockNumber BlockNumber) (*types.Header, error) {
 	var header types.Header

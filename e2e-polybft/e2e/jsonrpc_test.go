@@ -319,7 +319,55 @@ func TestE2E_JsonRPC(t *testing.T) {
 		require.NotNil(t, receipts)
 		require.NotEqual(t, 0, len(receipts))
 
-		require.Equal(t, receipts[0].BlockNumber, receipt.BlockNumber)
-		require.Equal(t, receipts[0].BlockHash, receipt.BlockHash)
+		require.Equal(t, uint64(receipts[0].BlockNumber), receipt.BlockNumber)
+		require.Equal(t, receipts[0].BlockHash, types.Hash(receipt.BlockHash))
+	})
+
+	t.Run("eth_createAccessList", func(t *testing.T) {
+		deployTxn := cluster.Deploy(t, preminedAcct, contractsapi.TestSimple.Bytecode)
+		require.True(t, deployTxn.Succeed())
+		receipt := deployTxn.Receipt()
+
+		target := types.Address(receipt.ContractAddress)
+		input := contractsapi.TestSimple.Abi.GetMethod("getValue").ID()
+
+		gasPrice, err := newEthClient.GasPrice()
+		require.NoError(t, err)
+
+		// setValueFn := contractsapi.TestSimple.Abi.GetMethod("setValue")
+		// newVal := big.NewInt(0)
+
+		// output, err := setValueFn.Encode([]interface{}{newVal})
+		// require.NoError(t, err)
+		// require.NotNil(t, output)
+
+		txn := &bladeRPC.CallMsg{
+			From:       preminedAcct.Address(),
+			To:         &target,
+			Gas:        92100,
+			GasPrice:   new(big.Int).SetUint64(gasPrice),
+			Data:       input,
+			AccessList: deployTxn.Txn().AccessList(),
+		}
+
+		accessListResult, err := newEthClient.CreateAccessList(txn, bladeRPC.LatestBlockNumberOrHash)
+		require.NoError(t, err)
+		require.NotNil(t, accessListResult)
+
+		require.NoError(t, accessListResult.Error)
+		require.NotEqual(t, 0, len(accessListResult.Accesslist))
+		require.GreaterOrEqual(t, accessListResult.GasUsed, uint64(0))
+
+		isDone := false
+
+		for _, accessTuple := range accessListResult.Accesslist {
+			if ethgo.Address(accessTuple.Address) == receipt.ContractAddress {
+				isDone = true
+
+				break
+			}
+		}
+
+		require.Equal(t, true, isDone)
 	})
 }
