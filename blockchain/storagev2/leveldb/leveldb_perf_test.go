@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 
 func openStorage(t *testing.T, p string) (*storagev2.Storage, func(), string) {
@@ -82,7 +83,7 @@ func TestWriteBlockPerf(t *testing.T) {
 	time.Sleep(time.Second)
 
 	size := dbSize(t, path)
-	t.Logf("\tdb size %d MB", size/(1024*1024))
+	t.Logf("\tdb size %d MB", size/(1*opt.MiB))
 	t.Logf("\ttotal WriteBatch %d ms", watchTime)
 }
 

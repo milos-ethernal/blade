@@ -50,7 +50,7 @@ func TestE2E_Storage(t *testing.T) {
 			// Send every second transaction as a dynamic fees one
 			var txn *types.Transaction
 
-			if i%2 == 0 { // Intentionally disable it since dynamic fee tx not working
+			if i%2 == 0 {
 				chainID, err := client.ChainID()
 				require.NoError(t, err)
 
