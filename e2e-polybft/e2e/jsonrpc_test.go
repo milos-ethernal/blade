@@ -319,8 +319,8 @@ func TestE2E_JsonRPC(t *testing.T) {
 		require.NotNil(t, receipts)
 		require.NotEqual(t, 0, len(receipts))
 
-		require.Equal(t, uint64(receipts[0].BlockNumber), receipt.BlockNumber)
-		require.Equal(t, receipts[0].BlockHash, types.Hash(receipt.BlockHash))
+		require.Equal(t, receipts[0].BlockNumber, receipt.BlockNumber)
+		require.Equal(t, receipts[0].BlockHash, receipt.BlockHash)
 	})
 
 	t.Run("eth_createAccessList", func(t *testing.T) {

@@ -296,7 +296,7 @@ func Test_toReceipt(t *testing.T) {
 		gasUsed           = 26000
 	)
 
-	testReceipt := func(name string, r *Receipt) {
+	testReceipt := func(name string, r *receipt) {
 		res, err := json.Marshal(r)
 		require.NoError(t, err)
 

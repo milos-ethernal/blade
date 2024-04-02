@@ -245,7 +245,7 @@ func toHeader(h *types.Header) *header {
 	return res
 }
 
-type Receipt struct {
+type receipt struct {
 	Root              types.Hash     `json:"root"`
 	CumulativeGasUsed argUint64      `json:"cumulativeGasUsed"`
 	LogsBloom         types.Bloom    `json:"logsBloom"`
@@ -262,8 +262,8 @@ type Receipt struct {
 }
 
 func toReceipt(src *types.Receipt, tx *types.Transaction,
-	txIndex uint64, header *types.Header, logs []*Log) *Receipt {
-	return &Receipt{
+	txIndex uint64, header *types.Header, logs []*Log) *receipt {
+	return &receipt{
 		Root:              src.Root,
 		CumulativeGasUsed: argUint64(src.CumulativeGasUsed),
 		LogsBloom:         src.LogsBloom,

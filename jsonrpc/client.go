@@ -106,8 +106,8 @@ func (e *EthClient) GetHeaderByHash(hash types.Hash) (*types.Header, error) {
 }
 
 // GetBlockReceipts returns all transaction receipts for a given block.
-func (e *EthClient) GetBlockReceipts(blockNumber BlockNumber) ([]*Receipt, error) {
-	var receipts []*Receipt
+func (e *EthClient) GetBlockReceipts(blockNumber BlockNumber) ([]*ethgo.Receipt, error) {
+	var receipts []*ethgo.Receipt
 	err := e.client.Call("eth_getBlockReceipts", &receipts, blockNumber)
 
 	return receipts, err
