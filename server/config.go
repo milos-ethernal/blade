@@ -42,9 +42,7 @@ type Config struct {
 
 	LogFilePath string
 
-	TLSCertFile string
-
-	TLSKeyFile string
+	UseTLS bool
 
 	Relayer bool
 

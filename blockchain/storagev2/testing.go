@@ -512,6 +512,7 @@ func generateBlock(t *testing.T, num uint64) *types.FullBlock {
 		b.Receipts[i].LogsBloom = types.CreateBloom(b.Receipts)
 	}
 
+	b.Block.Header.ComputeHash()
 	return b
 }
 

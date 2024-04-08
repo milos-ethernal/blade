@@ -91,6 +91,18 @@ func (l *LocalSecretsManager) Setup() error {
 		secrets.NetworkKeyLocal,
 	)
 
+	// /etc/ssl/certs/jsonrpc.pem
+	l.secretPathMap[secrets.JSONTLSCert] = filepath.Join(
+		secrets.JSONTLSFolderLocal,
+		secrets.JSONTLSCertLocal,
+	)
+
+	// /etc/ssl/private/jsonrpc.key
+	l.secretPathMap[secrets.JSONTLSKey] = filepath.Join(
+		secrets.JSONTLSFolderLocal,
+		secrets.JSONTLSKeyLocal,
+	)
+
 	return nil
 }
 

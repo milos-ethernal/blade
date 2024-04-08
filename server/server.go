@@ -869,10 +869,9 @@ func (s *Server) setupJSONRPC(txSigner crypto.TxSigner) error {
 		BlockRangeLimit:          s.config.JSONRPC.BlockRangeLimit,
 		ConcurrentRequestsDebug:  s.config.JSONRPC.ConcurrentRequestsDebug,
 		WebSocketReadLimit:       s.config.JSONRPC.WebSocketReadLimit,
-		TLSCertFile:              s.config.TLSCertFile,
-		TLSKeyFile:               s.config.TLSKeyFile,
-		SecretsManager:           s.secretsManager,
 		TxSigner:                 txSigner,
+		UseTLS:                   s.config.UseTLS,
+		SecretsManager:           s.secretsManager,
 	}
 
 	srv, err := jsonrpc.NewJSONRPC(s.logger, conf)
