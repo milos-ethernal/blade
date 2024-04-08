@@ -56,6 +56,15 @@ require (
 )
 
 require (
+	github.com/Ethernal-Tech/cardano-infrastructure v0.0.0-20240408115508-f8c920004b2d
+	github.com/blinklabs-io/gouroboros v0.75.0 // indirect
+	github.com/fxamacker/cbor/v2 v2.6.0 // indirect
+	github.com/jinzhu/copier v0.4.0 // indirect
+	github.com/utxorpc/go-codegen v0.4.4 // indirect
+	github.com/x448/float16 v0.8.4 // indirect
+)
+
+require (
 	cloud.google.com/go/compute v1.24.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v1.1.6 // indirect
