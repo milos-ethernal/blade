@@ -54,7 +54,7 @@ require (
 )
 
 require (
-	github.com/Ethernal-Tech/cardano-infrastructure v0.0.0-20240404134832-4ea7565eba7b
+	github.com/Ethernal-Tech/cardano-infrastructure v0.0.0-20240408115508-f8c920004b2d
 	github.com/blinklabs-io/gouroboros v0.75.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.6.0 // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect
