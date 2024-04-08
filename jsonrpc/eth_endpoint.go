@@ -28,9 +28,6 @@ type ethTxPoolStore interface {
 	// AddTx adds a new transaction to the tx pool
 	AddTx(tx *types.Transaction) error
 
-	// CheckTx ensures the transaction conforms
-	CheckTx(tx *types.Transaction) error
-
 	// GetPendingTx gets the pending transaction from the transaction pool, if it's present
 	GetPendingTx(txHash types.Hash) (*types.Transaction, bool)
 

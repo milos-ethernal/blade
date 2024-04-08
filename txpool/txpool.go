@@ -301,16 +301,6 @@ func (p *TxPool) SetSealing(sealing bool) {
 	p.sealing.CompareAndSwap(p.sealing.Load(), sealing)
 }
 
-// CheckTx ensures the transaction conforms to specific
-// constraints before entering the pool.
-func (p *TxPool) CheckTx(tx *types.Transaction) error {
-	if err := p.validateTx(tx); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // AddTx adds a new transaction to the pool (sent from json-RPC/gRPC endpoints)
 // and broadcasts it to the network (if enabled).
 func (p *TxPool) AddTx(tx *types.Transaction) error {

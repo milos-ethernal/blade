@@ -113,7 +113,7 @@ func (a *Account) GetEcdsaPrivateKey() (*ecdsa.PrivateKey, error) {
 	return AdaptECDSAPrivKey(a.Ecdsa)
 }
 
-// AdaptECDSAPrivKey converts ecdsa private key from wallet.Key to ecdsa.PrivateKey instance
+// AdaptECDSAPrivKey converts ecdsa private key from crypto.ECDSAKey to ecdsa.PrivateKey instance
 func AdaptECDSAPrivKey(ecdsaKey *crypto.ECDSAKey) (*ecdsa.PrivateKey, error) {
 	ecdsaRaw, err := ecdsaKey.MarshallPrivateKey()
 	if err != nil {

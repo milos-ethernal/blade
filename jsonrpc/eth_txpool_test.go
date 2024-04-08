@@ -105,10 +105,6 @@ func (m *mockStoreTxn) AddTx(tx *types.Transaction) error {
 	return nil
 }
 
-func (m *mockStoreTxn) CheckTx(tx *types.Transaction) error {
-	return nil
-}
-
 func (m *mockStoreTxn) GetNonce(addr types.Address) uint64 {
 	return 1
 }
