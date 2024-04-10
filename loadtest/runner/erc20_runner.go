@@ -231,43 +231,13 @@ func (e *ERC20Runner) sendTransactionsForUser(account *account, chainID *big.Int
 		return nil, nil, err
 	}
 
-	var (
-		gasPrice             *big.Int
-		maxFeePerGas         *big.Int
-		maxPriorityFeePerGas *big.Int
-	)
-
-	if e.cfg.DynamicTxs {
-		mpfpg, err := e.client.MaxPriorityFeePerGas()
-		if err != nil {
-			return nil, nil, err
-		}
-
-		maxPriorityFeePerGas = new(big.Int).Mul(mpfpg, big.NewInt(2))
-
-		feeHistory, err := e.client.FeeHistory(1, jsonrpc.LatestBlockNumber, nil)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		baseFee := big.NewInt(0)
-
-		if len(feeHistory.BaseFee) != 0 {
-			baseFee = baseFee.SetUint64(feeHistory.BaseFee[len(feeHistory.BaseFee)-1])
-		}
-
-		maxFeePerGas = new(big.Int).Add(baseFee, mpfpg)
-		maxFeePerGas.Mul(maxFeePerGas, big.NewInt(2))
-	} else {
-		gp, err := e.client.GasPrice()
-		if err != nil {
-			return nil, nil, err
-		}
-
-		gasPrice = new(big.Int).SetUint64(gp * 3)
+	feeData, err := getFeeData(e.client, e.cfg.DynamicTxs)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	sendErrs := make([]error, 0)
+	checkFeeDataNum := e.cfg.TxsPerUser / 2
 
 	for i := 0; i < e.cfg.TxsPerUser; i++ {
 		input, err := e.erc20TokenArtifact.Abi.Methods["transfer"].Encode(map[string]interface{}{
@@ -278,13 +248,20 @@ func (e *ERC20Runner) sendTransactionsForUser(account *account, chainID *big.Int
 			return nil, nil, err
 		}
 
+		if i%checkFeeDataNum == 0 {
+			feeData, err = getFeeData(e.client, e.cfg.DynamicTxs)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+
 		if e.cfg.DynamicTxs {
 			_, err = txRelayer.SendTransaction(types.NewTx(types.NewDynamicFeeTx(
 				types.WithNonce(account.nonce),
 				types.WithTo(&e.erc20Token),
 				types.WithFrom(account.key.Address()),
-				types.WithGasFeeCap(maxFeePerGas),
-				types.WithGasTipCap(maxPriorityFeePerGas),
+				types.WithGasFeeCap(feeData.gasFeeCap),
+				types.WithGasTipCap(feeData.gasTipCap),
 				types.WithChainID(chainID),
 				types.WithInput(input),
 			)), account.key)
@@ -292,7 +269,7 @@ func (e *ERC20Runner) sendTransactionsForUser(account *account, chainID *big.Int
 			_, err = txRelayer.SendTransaction(types.NewTx(types.NewLegacyTx(
 				types.WithNonce(account.nonce),
 				types.WithTo(&e.erc20Token),
-				types.WithGasPrice(gasPrice),
+				types.WithGasPrice(feeData.gasPrice),
 				types.WithFrom(account.key.Address()),
 				types.WithInput(input),
 			)), account.key)

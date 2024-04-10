@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/0xPolygon/polygon-edge/jsonrpc"
 	"github.com/0xPolygon/polygon-edge/txrelayer"
 	"github.com/0xPolygon/polygon-edge/types"
 	"github.com/schollz/progressbar/v3"
@@ -77,46 +76,24 @@ func (e *EOARunner) sendTransactionsForUser(account *account, chainID *big.Int,
 		return nil, nil, err
 	}
 
-	var (
-		gasPrice             *big.Int
-		maxFeePerGas         *big.Int
-		maxPriorityFeePerGas *big.Int
-	)
-
-	if e.cfg.DynamicTxs {
-		mpfpg, err := e.client.MaxPriorityFeePerGas()
-		if err != nil {
-			return nil, nil, err
-		}
-
-		maxPriorityFeePerGas = new(big.Int).Mul(mpfpg, big.NewInt(2))
-
-		feeHistory, err := e.client.FeeHistory(1, jsonrpc.LatestBlockNumber, nil)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		baseFee := big.NewInt(0)
-
-		if len(feeHistory.BaseFee) != 0 {
-			baseFee = baseFee.SetUint64(feeHistory.BaseFee[len(feeHistory.BaseFee)-1])
-		}
-
-		maxFeePerGas = new(big.Int).Add(baseFee, mpfpg)
-		maxFeePerGas.Mul(maxFeePerGas, big.NewInt(2))
-	} else {
-		gp, err := e.client.GasPrice()
-		if err != nil {
-			return nil, nil, err
-		}
-
-		gasPrice = new(big.Int).SetUint64(gp + (gp * 20 / 100))
+	feeData, err := getFeeData(e.client, e.cfg.DynamicTxs)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	sendErrs := make([]error, 0)
+	checkFeeDataNum := e.cfg.TxsPerUser / 2
 
 	for i := 0; i < e.cfg.TxsPerUser; i++ {
 		var err error
+
+		if i%checkFeeDataNum == 0 {
+			feeData, err = getFeeData(e.client, e.cfg.DynamicTxs)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+
 		if e.cfg.DynamicTxs {
 			_, err = txRelayer.SendTransaction(types.NewTx(types.NewDynamicFeeTx(
 				types.WithNonce(account.nonce),
@@ -124,8 +101,8 @@ func (e *EOARunner) sendTransactionsForUser(account *account, chainID *big.Int,
 				types.WithValue(ethgo.Gwei(1)),
 				types.WithGas(21000),
 				types.WithFrom(account.key.Address()),
-				types.WithGasFeeCap(maxFeePerGas),
-				types.WithGasTipCap(maxPriorityFeePerGas),
+				types.WithGasFeeCap(feeData.gasFeeCap),
+				types.WithGasTipCap(feeData.gasTipCap),
 				types.WithChainID(chainID),
 			)), account.key)
 		} else {
@@ -134,7 +111,7 @@ func (e *EOARunner) sendTransactionsForUser(account *account, chainID *big.Int,
 				types.WithTo(&receiverAddr),
 				types.WithValue(ethgo.Gwei(1)),
 				types.WithGas(21000),
-				types.WithGasPrice(gasPrice),
+				types.WithGasPrice(feeData.gasPrice),
 				types.WithFrom(account.key.Address()),
 			)), account.key)
 		}

@@ -20,6 +20,14 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const transactionRetryNum = 5
+
+type feeData struct {
+	gasPrice  *big.Int
+	gasTipCap *big.Int
+	gasFeeCap *big.Int
+}
+
 // BaseLoadTestRunner represents a base load test runner.
 type BaseLoadTestRunner struct {
 	cfg LoadTestConfig
@@ -503,4 +511,45 @@ func (r *BaseLoadTestRunner) sendTransactions(
 	}
 
 	return allTxnHashes, nil
+}
+
+func getFeeData(client *jsonrpc.EthClient, dynamicTxs bool) (*feeData, error) {
+	feeData := &feeData{}
+
+	if dynamicTxs {
+		mpfpg, err := client.MaxPriorityFeePerGas()
+		if err != nil {
+			return nil, err
+		}
+
+		gasTipCap := new(big.Int).Mul(mpfpg, big.NewInt(2))
+
+		feeHistory, err := client.FeeHistory(1, jsonrpc.LatestBlockNumber, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		baseFee := big.NewInt(0)
+
+		if len(feeHistory.BaseFee) != 0 {
+			baseFee = baseFee.SetUint64(feeHistory.BaseFee[len(feeHistory.BaseFee)-1])
+		}
+
+		gasFeeCap := new(big.Int).Add(baseFee, mpfpg)
+		gasFeeCap.Mul(gasFeeCap, big.NewInt(2))
+
+		feeData.gasTipCap = gasTipCap
+		feeData.gasFeeCap = gasFeeCap
+	} else {
+		gp, err := client.GasPrice()
+		if err != nil {
+			return nil, err
+		}
+
+		gasPrice := new(big.Int).SetUint64(gp + (gp * 20 / 100))
+
+		feeData.gasPrice = gasPrice
+	}
+
+	return feeData, nil
 }
