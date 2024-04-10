@@ -629,11 +629,13 @@ func (p *Polybft) startConsensusProtocol() {
 		stopSequence func()
 	)
 
-	// check every block time * 1.5, so we don't artificially close a sequence before the actual sequence has ended properly
+	// check every block time * 1.5, so we don't artificially close a sequence
+	// before the actual sequence has ended properly
 	checkOffset := p.config.BlockTime
 	if checkOffset > 1 {
-		checkOffset = checkOffset / 2
+		checkOffset /= 2
 	}
+
 	checkFrequency := time.Duration(p.config.BlockTime + checkOffset)
 	staleChecker := newStaleSequenceCheck(p.logger, p.blockchain.CurrentHeader, checkFrequency*time.Second)
 
@@ -679,7 +681,7 @@ func (p *Polybft) startConsensusProtocol() {
 			}
 		case <-sequenceCh:
 		case <-p.closeCh:
-			p.logger.Debug("[BRE] stoping sequence", "block number", latestHeader.Number+1)
+			p.logger.Debug("stoping sequence", "block number", latestHeader.Number+1)
 			if isValidator {
 				stopSequence()
 				staleChecker.stopChecking()

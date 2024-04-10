@@ -19,7 +19,10 @@ type staleSequenceCheck struct {
 	getHeader          func() *types.Header
 }
 
-func newStaleSequenceCheck(logger hclog.Logger, getHeader func() *types.Header, checkDuration time.Duration) *staleSequenceCheck {
+func newStaleSequenceCheck(logger hclog.Logger,
+	getHeader func() *types.Header,
+	checkDuration time.Duration,
+) *staleSequenceCheck {
 	return &staleSequenceCheck{
 		logger:          logger,
 		currentSequence: 0,
@@ -33,14 +36,18 @@ func (s *staleSequenceCheck) startChecking() {
 	s.sequenceShouldStop = make(chan struct{}, 1)
 	s.stop = make(chan struct{})
 	s.stopped = make(chan struct{})
+
 	ticker := time.NewTicker(s.checkFrequency)
+
 	go func() {
 		defer close(s.stopped)
+
 		for {
 			select {
 			case <-s.stop:
 				close(s.sequenceShouldStop)
 				ticker.Stop()
+
 				return
 			case <-ticker.C:
 				s.checkForStaleness()
@@ -57,6 +64,7 @@ func (s *staleSequenceCheck) stopChecking() {
 func (s *staleSequenceCheck) setSequence(sequence uint64) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
+
 	s.currentSequence = sequence
 }
 
@@ -69,9 +77,11 @@ func (s *staleSequenceCheck) checkForStaleness() {
 func (s *staleSequenceCheck) chainHeightUpdated(height uint64) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
+
 	if s.currentSequence == 0 {
 		return
 	}
+
 	if height >= s.currentSequence {
 		s.logger.Info("[staleSequenceCheck] stale sequence detected", "height", height, "currentSequence", s.currentSequence)
 		s.sequenceShouldStop <- struct{}{}
