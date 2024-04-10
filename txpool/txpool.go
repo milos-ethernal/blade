@@ -770,7 +770,7 @@ func (p *TxPool) pruneAccountsWithNonceHoles() {
 // (only once) and an enqueueRequest is signaled.
 func (p *TxPool) addTx(origin txOrigin, tx *types.Transaction) error {
 	if p.logger.IsDebug() {
-		p.logger.Debug("add tx", "origin", origin.String(), "hash", tx.Hash().String())
+		p.logger.Debug("add tx", "origin", origin.String(), "hash", tx.Hash().String(), "type", tx.Type())
 	}
 
 	// validate incoming tx
