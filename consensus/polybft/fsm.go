@@ -211,6 +211,8 @@ func (f *fsm) BuildProposal(currentRound uint64) ([]byte, error) {
 		}
 
 		f.logger.Debug("[FSM Build Proposal]",
+			"block", stateBlock.Block.Number(),
+			"round", currentRound,
 			"txs", len(stateBlock.Block.Transactions),
 			"proposal hash", checkpointHash.String())
 	}
@@ -392,7 +394,8 @@ func (f *fsm) Validate(proposal []byte) error {
 			return fmt.Errorf("failed to calculate proposal hash: %w", err)
 		}
 
-		f.logger.Debug("[FSM Validate]", "txs", len(block.Transactions), "proposal hash", checkpointHash)
+		f.logger.Debug("[FSM Validate] Finish", "Block", block.Number(), "Proposer", types.BytesToHash(block.Header.Miner),
+			"txs", len(block.Transactions), "proposal hash", checkpointHash)
 	}
 
 	f.target = stateBlock
