@@ -269,7 +269,7 @@ func (e *ERC20Runner) sendTransactionsForUser(account *account, chainID *big.Int
 			return nil, nil, err
 		}
 
-		gasPrice = new(big.Int).SetUint64(gp * 2)
+		gasPrice = new(big.Int).SetUint64(gp * 3)
 	}
 
 	sendErrs := make([]error, 0)
