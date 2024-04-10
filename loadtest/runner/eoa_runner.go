@@ -82,14 +82,8 @@ func (e *EOARunner) sendTransactionsForUser(account *account, chainID *big.Int,
 		return nil, err
 	}
 
-	gasPrice, err := e.client.GasPrice()
-	if err != nil {
-		return nil, err
-	}
-
-	bigGasPrice := new(big.Int).SetUint64(gasPrice)
-
 	var (
+		gasPrice             *big.Int
 		maxFeePerGas         *big.Int
 		maxPriorityFeePerGas *big.Int
 	)
@@ -115,6 +109,13 @@ func (e *EOARunner) sendTransactionsForUser(account *account, chainID *big.Int,
 
 		maxFeePerGas = new(big.Int).Add(baseFee, mpfpg)
 		maxFeePerGas.Mul(maxFeePerGas, big.NewInt(2))
+	} else {
+		gp, err := e.client.GasPrice()
+		if err != nil {
+			return nil, err
+		}
+
+		gasPrice = new(big.Int).SetUint64(gp + (gp * 20 / 100))
 	}
 
 	for i := 0; i < e.cfg.TxsPerUser; i++ {
@@ -136,7 +137,7 @@ func (e *EOARunner) sendTransactionsForUser(account *account, chainID *big.Int,
 				types.WithTo(&receiverAddr),
 				types.WithValue(ethgo.Gwei(1)),
 				types.WithGas(21000),
-				types.WithGasPrice(bigGasPrice),
+				types.WithGasPrice(gasPrice),
 				types.WithFrom(account.key.Address()),
 			)), account.key)
 		}

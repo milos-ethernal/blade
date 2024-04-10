@@ -235,14 +235,8 @@ func (e *ERC20Runner) sendTransactionsForUser(account *account, chainID *big.Int
 		return nil, err
 	}
 
-	gasPrice, err := e.client.GasPrice()
-	if err != nil {
-		return nil, err
-	}
-
-	bigGasPrice := new(big.Int).SetUint64(gasPrice)
-
 	var (
+		gasPrice             *big.Int
 		maxFeePerGas         *big.Int
 		maxPriorityFeePerGas *big.Int
 	)
@@ -268,6 +262,13 @@ func (e *ERC20Runner) sendTransactionsForUser(account *account, chainID *big.Int
 
 		maxFeePerGas = new(big.Int).Add(baseFee, mpfpg)
 		maxFeePerGas.Mul(maxFeePerGas, big.NewInt(2))
+	} else {
+		gp, err := e.client.GasPrice()
+		if err != nil {
+			return nil, err
+		}
+
+		gasPrice = new(big.Int).SetUint64(gp + (gp * 20 / 100))
 	}
 
 	for i := 0; i < e.cfg.TxsPerUser; i++ {
@@ -293,7 +294,7 @@ func (e *ERC20Runner) sendTransactionsForUser(account *account, chainID *big.Int
 			_, err = txRelayer.SendTransaction(types.NewTx(types.NewLegacyTx(
 				types.WithNonce(account.nonce),
 				types.WithTo(&e.erc20Token),
-				types.WithGasPrice(bigGasPrice),
+				types.WithGasPrice(gasPrice),
 				types.WithFrom(account.key.Address()),
 				types.WithInput(input),
 			)), account.key)
