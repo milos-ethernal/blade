@@ -70,7 +70,7 @@ func (e *EOARunner) sendTransactions() ([]types.Hash, error) {
 // For each transaction, it increments the account's nonce and returns the transaction hashes.
 // If an error occurs during the transaction sending process, it returns the error.
 func (e *EOARunner) sendTransactionsForUser(account *account, chainID *big.Int,
-	bar *progressbar.ProgressBar) ([]types.Hash, error) {
+	bar *progressbar.ProgressBar) ([]types.Hash, []error, error) {
 	txRelayer, err := txrelayer.NewTxRelayer(
 		txrelayer.WithClient(e.client),
 		txrelayer.WithChainID(chainID),
@@ -79,7 +79,7 @@ func (e *EOARunner) sendTransactionsForUser(account *account, chainID *big.Int,
 		txrelayer.WithoutNonceGet(),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var (
@@ -91,14 +91,14 @@ func (e *EOARunner) sendTransactionsForUser(account *account, chainID *big.Int,
 	if e.cfg.DynamicTxs {
 		mpfpg, err := e.client.MaxPriorityFeePerGas()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		maxPriorityFeePerGas = new(big.Int).Mul(mpfpg, big.NewInt(2))
 
 		feeHistory, err := e.client.FeeHistory(1, jsonrpc.LatestBlockNumber, nil)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		baseFee := big.NewInt(0)
@@ -112,11 +112,13 @@ func (e *EOARunner) sendTransactionsForUser(account *account, chainID *big.Int,
 	} else {
 		gp, err := e.client.GasPrice()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		gasPrice = new(big.Int).SetUint64(gp + (gp * 20 / 100))
 	}
+
+	sendErrs := make([]error, 0)
 
 	for i := 0; i < e.cfg.TxsPerUser; i++ {
 		var err error
@@ -143,12 +145,12 @@ func (e *EOARunner) sendTransactionsForUser(account *account, chainID *big.Int,
 		}
 
 		if err != nil {
-			return nil, err
+			sendErrs = append(sendErrs, err)
 		}
 
 		account.nonce++
 		bar.Add(1)
 	}
 
-	return txRelayer.GetTxnHashes(), nil
+	return txRelayer.GetTxnHashes(), sendErrs, nil
 }

@@ -435,7 +435,7 @@ func (r *BaseLoadTestRunner) calculateTPS(blockInfos map[uint64]blockInfo, txnSt
 // Finally, the function prints the time taken to send the transactions
 // and returns the transaction hashes and nil error.
 func (r *BaseLoadTestRunner) sendTransactions(
-	sendFn func(*account, *big.Int, *progressbar.ProgressBar) ([]types.Hash, error)) ([]types.Hash, error) {
+	sendFn func(*account, *big.Int, *progressbar.ProgressBar) ([]types.Hash, []error, error)) ([]types.Hash, error) {
 	fmt.Println("=============================================================")
 
 	chainID, err := r.client.ChainID()
@@ -445,6 +445,7 @@ func (r *BaseLoadTestRunner) sendTransactions(
 
 	start := time.Now().UTC()
 	totalTxs := r.cfg.VUs * r.cfg.TxsPerUser
+	foundErrs := make([]error, 0)
 
 	bar := progressbar.Default(int64(totalTxs), "Sending transactions")
 	defer bar.Close()
@@ -462,11 +463,12 @@ func (r *BaseLoadTestRunner) sendTransactions(
 				return ctx.Err()
 
 			default:
-				txnHashes, err := sendFn(vu, chainID, bar)
+				txnHashes, sendErrors, err := sendFn(vu, chainID, bar)
 				if err != nil {
 					return err
 				}
 
+				foundErrs = append(foundErrs, sendErrors...)
 				allTxnHashes = append(allTxnHashes, txnHashes...)
 
 				return nil
@@ -479,6 +481,13 @@ func (r *BaseLoadTestRunner) sendTransactions(
 	}
 
 	fmt.Println("Sending transactions took", time.Since(start))
+
+	if len(foundErrs) > 0 {
+		fmt.Println("Errors found while sending transactions:")
+		for _, err := range foundErrs {
+			fmt.Println(err)
+		}
+	}
 
 	return allTxnHashes, nil
 }

@@ -143,6 +143,7 @@ func (e *ERC20Runner) deployERC20Token() error {
 // If any error occurs during the minting process, an error is returned.
 func (e *ERC20Runner) mintERC20TokenToVUs() error {
 	fmt.Println("=============================================================")
+
 	start := time.Now().UTC()
 
 	bar := progressbar.Default(int64(e.cfg.VUs), "Minting ERC20 tokens to VUs")
@@ -222,7 +223,7 @@ func (e *ERC20Runner) sendTransactions() ([]types.Hash, error) {
 // It takes an account pointer and a chainID as input parameters.
 // It returns a slice of transaction hashes and an error if any.
 func (e *ERC20Runner) sendTransactionsForUser(account *account, chainID *big.Int,
-	bar *progressbar.ProgressBar) ([]types.Hash, error) {
+	bar *progressbar.ProgressBar) ([]types.Hash, []error, error) {
 	txRelayer, err := txrelayer.NewTxRelayer(
 		txrelayer.WithClient(e.client),
 		txrelayer.WithChainID(chainID),
@@ -232,7 +233,7 @@ func (e *ERC20Runner) sendTransactionsForUser(account *account, chainID *big.Int
 		txrelayer.WithoutNonceGet(),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var (
@@ -244,14 +245,14 @@ func (e *ERC20Runner) sendTransactionsForUser(account *account, chainID *big.Int
 	if e.cfg.DynamicTxs {
 		mpfpg, err := e.client.MaxPriorityFeePerGas()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		maxPriorityFeePerGas = new(big.Int).Mul(mpfpg, big.NewInt(2))
 
 		feeHistory, err := e.client.FeeHistory(1, jsonrpc.LatestBlockNumber, nil)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		baseFee := big.NewInt(0)
@@ -265,11 +266,13 @@ func (e *ERC20Runner) sendTransactionsForUser(account *account, chainID *big.Int
 	} else {
 		gp, err := e.client.GasPrice()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
-		gasPrice = new(big.Int).SetUint64(gp + (gp * 20 / 100))
+		gasPrice = new(big.Int).SetUint64(gp * 2)
 	}
+
+	sendErrs := make([]error, 0)
 
 	for i := 0; i < e.cfg.TxsPerUser; i++ {
 		input, err := e.erc20TokenArtifact.Abi.Methods["transfer"].Encode(map[string]interface{}{
@@ -277,7 +280,7 @@ func (e *ERC20Runner) sendTransactionsForUser(account *account, chainID *big.Int
 			"numTokens": big.NewInt(1),
 		})
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		if e.cfg.DynamicTxs {
@@ -301,12 +304,12 @@ func (e *ERC20Runner) sendTransactionsForUser(account *account, chainID *big.Int
 		}
 
 		if err != nil {
-			return nil, err
+			sendErrs = append(sendErrs, err)
 		}
 
 		account.nonce++
 		bar.Add(1)
 	}
 
-	return txRelayer.GetTxnHashes(), nil
+	return txRelayer.GetTxnHashes(), sendErrs, nil
 }
