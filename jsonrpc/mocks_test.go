@@ -3,6 +3,7 @@ package jsonrpc
 import (
 	"math/big"
 	"sync"
+	"testing"
 
 	"github.com/0xPolygon/polygon-edge/blockchain"
 	"github.com/0xPolygon/polygon-edge/helper/hex"
@@ -225,16 +226,18 @@ func (m *mockStore) FilterExtra(extra []byte) ([]byte, error) {
 	return extra, nil
 }
 
-func setupSecretsManagerWithKey(t require.TestingT) *secrets.SecretsManagerMock {
+func setupSecretsManagerWithKey(tb testing.TB) *secrets.SecretsManagerMock {
+	tb.Helper()
+
 	ecdsaKey, err := wallet.GenerateKey()
-	require.NoError(t, err)
+	require.NoError(tb, err)
 
 	ecdsaKeyRaw, err := ecdsaKey.MarshallPrivateKey()
-	require.NoError(t, err)
+	require.NoError(tb, err)
 
 	sm := secrets.NewSecretsManagerMock()
 	err = sm.SetSecret(secrets.ValidatorKey, []byte(hex.EncodeToString(ecdsaKeyRaw)))
-	require.NoError(t, err)
+	require.NoError(tb, err)
 
 	return sm
 }

@@ -121,6 +121,18 @@ func (e *EthClient) SignTransaction(msg *CallMsg) (*SignTransactionResult, error
 	return signTransactionResult, err
 }
 
+// Sign calculates an ECDSA signature
+func (e *EthClient) Sign(addr types.Address, data []byte) (string, error) {
+	var res string
+
+	hexData := "0x" + hex.EncodeToString(data)
+	if err := e.client.Call("eth_sign", &res, addr, hexData); err != nil {
+		return "", err
+	}
+
+	return res, nil
+}
+
 // GetTransactionReceipt returns the receipt of a transaction by transaction hash
 func (e *EthClient) GetTransactionReceipt(hash types.Hash) (*ethgo.Receipt, error) {
 	var receipt *ethgo.Receipt

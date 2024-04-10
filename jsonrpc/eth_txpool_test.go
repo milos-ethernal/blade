@@ -91,6 +91,32 @@ func TestEth_TxnPool_SendTransaction(t *testing.T) {
 	assert.NotNil(t, hash)
 }
 
+func TestEth_TxnPool_Sign(t *testing.T) {
+	store := &mockStoreTxn{}
+	eth := newTestEthEndpoint(store)
+	txn := types.NewTx(types.NewLegacyTx(
+		types.WithFrom(addr0),
+		types.WithSignatureValues(big.NewInt(1), nil, nil),
+	))
+	txn.ComputeHash()
+
+	contractKey, err := crypto.GenerateECDSAKey()
+	assert.NoError(t, err)
+
+	eth.ecdsaKey = contractKey
+
+	defaultChainID := uint64(100)
+	eth.txSigner = crypto.NewSigner(chain.AllForksEnabled.At(0), defaultChainID)
+
+	data := txn.MarshalRLP()
+	dataSignInterface, err := eth.Sign(addr0, data)
+	assert.NoError(t, err)
+	assert.NotNil(t, dataSignInterface)
+
+	dataSign := dataSignInterface.(*argBytes)
+	assert.Greater(t, (*dataSign)[64], byte(0))
+}
+
 type mockStoreTxn struct {
 	ethStore
 	accounts map[types.Address]*mockAccount

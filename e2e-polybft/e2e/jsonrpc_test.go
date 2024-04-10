@@ -342,6 +342,45 @@ func TestE2E_JsonRPC(t *testing.T) {
 		require.NotEqual(t, 0, len(*res.Raw))
 	})
 
+	t.Run("eth_sign", func(t *testing.T) {
+		receiver := types.StringToAddress("0xDEADFFFF")
+		tokenAmount := ethgo.Ether(1)
+
+		chainID, err := newEthClient.ChainID()
+		require.NoError(t, err)
+
+		gasPrice, err := newEthClient.GasPrice()
+		require.NoError(t, err)
+
+		newAccountKey, newAccountAddr := tests.GenerateKeyAndAddr(t)
+
+		transferTxn := cluster.Transfer(t, preminedAcct, newAccountAddr, tokenAmount)
+		require.True(t, transferTxn.Succeed())
+
+		newAccountBalance, err := newEthClient.GetBalance(newAccountAddr, bladeRPC.LatestBlockNumberOrHash)
+		require.NoError(t, err)
+		require.Equal(t, tokenAmount, newAccountBalance)
+
+		txn := types.NewTx(
+			types.NewLegacyTx(
+				types.WithNonce(0),
+				types.WithFrom(newAccountAddr),
+				types.WithTo(&receiver),
+				types.WithValue(ethgo.Gwei(1)),
+				types.WithGas(21000),
+				types.WithGasPrice(new(big.Int).SetUint64(gasPrice)),
+			))
+
+		signedTxn, err := crypto.NewLondonSigner(chainID.Uint64()).SignTx(txn, newAccountKey)
+		require.NoError(t, err)
+
+		data := signedTxn.MarshalRLPTo(nil)
+
+		dataSign, err := newEthClient.Sign(preminedAcct.Address(), data)
+		require.NoError(t, err)
+		require.NotEqual(t, 0, dataSign[64])
+	})
+
 	t.Run("eth_getHeaderByNumber", func(t *testing.T) {
 		key1, err := crypto.GenerateECDSAKey()
 		require.NoError(t, err)

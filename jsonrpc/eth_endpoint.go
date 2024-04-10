@@ -1133,3 +1133,38 @@ func (e *Eth) FeeHistory(blockCount argUint64, newestBlock BlockNumber,
 
 	return result, nil
 }
+
+// Sign calculates an ECDSA signature for:
+// keccak256("\x19Ethereum Signed Message:\n" + len(message) + message).
+//
+// Note, the produced signature conforms to the secp256k1 curve R, S and V values,
+// where the V value will be 27 or 28 for legacy reasons.
+//
+// The account associated with addr must be unlocked.
+//
+// https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_sign
+func (e *Eth) Sign(_ types.Address, buf argBytes) (interface{}, error) {
+	tx := &types.Transaction{}
+	if err := tx.UnmarshalRLP(buf); err != nil {
+		return nil, err
+	}
+
+	if e.ecdsaKey == nil {
+		return nil, errMissingPrivateKey
+	}
+
+	cryptoECDSAPrivKey, err := polyWallet.AdaptECDSAPrivKey(e.ecdsaKey)
+	if err != nil {
+		return nil, err
+	}
+
+	signedTx, err := e.txSigner.SignTx(tx, cryptoECDSAPrivKey)
+	if err != nil {
+		return nil, err
+	}
+
+	data := signedTx.MarshalRLP()
+	data[64] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
+
+	return argBytesPtr(data), err
+}
