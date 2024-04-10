@@ -73,12 +73,7 @@ func (e *ERC20Runner) Run() error {
 		return err
 	}
 
-	blockInfo, txnStats, err := e.waitForReceipts(txHashes)
-	if err != nil {
-		return err
-	}
-
-	return e.calculateTPS(blockInfo, txnStats)
+	return e.calculateTPS(e.waitForReceipts(txHashes))
 }
 
 // deployERC20Token deploys an ERC20 token contract.

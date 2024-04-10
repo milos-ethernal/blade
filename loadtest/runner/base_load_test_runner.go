@@ -204,7 +204,7 @@ func (r *BaseLoadTestRunner) waitForTxPoolToEmpty() error {
 
 // waitForReceipts waits for the receipts of the given transaction hashes and returns
 // a map of block information, transaction statistics, and an error if any.
-func (r *BaseLoadTestRunner) waitForReceipts(txHashes []types.Hash) (map[uint64]blockInfo, []txStats, error) {
+func (r *BaseLoadTestRunner) waitForReceipts(txHashes []types.Hash) (map[uint64]blockInfo, []txStats) {
 	fmt.Println("=============================================================")
 	start := time.Now().UTC()
 
@@ -214,6 +214,8 @@ func (r *BaseLoadTestRunner) waitForReceipts(txHashes []types.Hash) (map[uint64]
 
 	bar := progressbar.Default(int64(len(txHashes)), "Gathering receipts")
 	defer bar.Close()
+
+	foundErrors := make([]error, 0)
 
 	for _, txHash := range txHashes {
 		if blockNum, exists := txToBlockMap[txHash]; exists {
@@ -225,7 +227,9 @@ func (r *BaseLoadTestRunner) waitForReceipts(txHashes []types.Hash) (map[uint64]
 
 		receipt, err := r.waitForReceipt(txHash)
 		if err != nil {
-			return nil, nil, err
+			foundErrors = append(foundErrors, err)
+
+			continue
 		}
 
 		txnStats = append(txnStats, txStats{txHash, receipt.BlockNumber})
@@ -233,7 +237,9 @@ func (r *BaseLoadTestRunner) waitForReceipts(txHashes []types.Hash) (map[uint64]
 
 		block, err := r.client.GetBlockByNumber(jsonrpc.BlockNumber(receipt.BlockNumber), true)
 		if err != nil {
-			return nil, nil, err
+			foundErrors = append(foundErrors, err)
+
+			continue
 		}
 
 		gasUsed := new(big.Int).SetUint64(block.Header.GasUsed)
@@ -259,7 +265,14 @@ func (r *BaseLoadTestRunner) waitForReceipts(txHashes []types.Hash) (map[uint64]
 
 	fmt.Println("Waiting for receipts took", time.Since(start))
 
-	return blockInfoMap, txnStats, nil
+	if len(foundErrors) > 0 {
+		fmt.Println("Errors found while waiting for receipts:")
+		for _, err := range foundErrors {
+			fmt.Println(err)
+		}
+	}
+
+	return blockInfoMap, txnStats
 }
 
 // waitForReceipt waits for the transaction receipt of the given transaction hash.

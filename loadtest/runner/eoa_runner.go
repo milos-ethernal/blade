@@ -52,12 +52,7 @@ func (e *EOARunner) Run() error {
 		return err
 	}
 
-	blockInfo, txnStats, err := e.waitForReceipts(txHashes)
-	if err != nil {
-		return err
-	}
-
-	return e.calculateTPS(blockInfo, txnStats)
+	return e.calculateTPS(e.waitForReceipts(txHashes))
 }
 
 // sendTransactions sends transactions for the load test.
