@@ -47,7 +47,7 @@ type LoadTestConfig struct {
 
 	JSONRPCUrl      string        // JSONRPCUrl is the URL of the JSON-RPC server.
 	ReceiptsTimeout time.Duration // ReceiptsTimeout is the timeout for waiting for transaction receipts.
-	TxPoolTimeout   time.Duration // TxPoolTimeout is the timeout for waiting for transactions to be included in the transaction pool.
+	TxPoolTimeout   time.Duration // TxPoolTimeout is the timeout for waiting for tx pool to empty.
 
 	VUs        int  // VUs is the number of virtual users.
 	TxsPerUser int  // TxsPerUser is the number of transactions per user.

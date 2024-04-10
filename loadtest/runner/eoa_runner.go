@@ -1,16 +1,12 @@
 package runner
 
 import (
-	"context"
-	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/0xPolygon/polygon-edge/jsonrpc"
 	"github.com/0xPolygon/polygon-edge/txrelayer"
 	"github.com/0xPolygon/polygon-edge/types"
 	"github.com/umbracle/ethgo"
-	"golang.org/x/sync/errgroup"
 )
 
 // EOARunner represents a runner for executing load tests specific to EOAs (Externally Owned Accounts).
@@ -60,51 +56,9 @@ func (e *EOARunner) Run() error {
 	return e.calculateTPS(blockInfo, txnStats)
 }
 
-// sendTransactions sends transactions for each virtual user (vu) and returns the transaction hashes.
-// It retrieves the chain ID from the client and uses it to send transactions for each user.
-// The function runs concurrently for each user using errgroup.
-// If the context is canceled, the function returns the context error.
-// The transaction hashes are appended to the allTxnHashes slice.
-// Finally, the function prints the time taken to send the transactions and returns the transaction hashes and nil error.
+// sendTransactions sends transactions for the load test.
 func (e *EOARunner) sendTransactions() ([]types.Hash, error) {
-	chainID, err := e.client.ChainID()
-	if err != nil {
-		return nil, err
-	}
-
-	start := time.Now().UTC()
-
-	allTxnHashes := make([]types.Hash, 0, e.cfg.VUs*e.cfg.TxsPerUser)
-
-	g, ctx := errgroup.WithContext(context.Background())
-
-	for _, vu := range e.vus {
-		vu := vu
-		g.Go(func() error {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-
-			default:
-				txnHashes, err := e.sendTransactionsForUser(vu, chainID)
-				if err != nil {
-					return err
-				}
-
-				allTxnHashes = append(allTxnHashes, txnHashes...)
-
-				return nil
-			}
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
-
-	fmt.Println("Sending transactions took", time.Since(start))
-
-	return allTxnHashes, nil
+	return e.BaseLoadTestRunner.sendTransactions(e.sendTransactionsForUser)
 }
 
 // sendTransactionsForUser sends multiple transactions for a user account on a specific chain.

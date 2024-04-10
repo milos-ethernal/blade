@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/0xPolygon/polygon-edge/contracts"
 	"github.com/0xPolygon/polygon-edge/jsonrpc"
@@ -150,9 +149,11 @@ func (e *ERC20Runner) mintERC20TokenToVUs() error {
 	}
 
 	g, ctx := errgroup.WithContext(context.Background())
+
 	for i, vu := range e.vus {
 		i := i
 		vu := vu
+
 		g.Go(func() error {
 			select {
 			case <-ctx.Done():
@@ -190,51 +191,9 @@ func (e *ERC20Runner) mintERC20TokenToVUs() error {
 	return g.Wait()
 }
 
-// sendTransactions sends transactions for each virtual user (vu) and returns the transaction hashes.
-// It retrieves the chain ID from the client and starts a timer to measure the execution time.
-// The method uses an errgroup to concurrently send transactions for each vu.
-// If the context is canceled, the method returns the context error.
-// After sending transactions for each vu, it appends the transaction hashes to the allTxnHashes slice.
-// Finally, it prints the execution time and returns the transaction hashes and any error encountered.
+// sendTransactions sends transactions for the load test.
 func (e *ERC20Runner) sendTransactions() ([]types.Hash, error) {
-	chainID, err := e.client.ChainID()
-	if err != nil {
-		return nil, err
-	}
-
-	start := time.Now().UTC()
-
-	allTxnHashes := make([]types.Hash, 0, e.cfg.VUs*e.cfg.TxsPerUser)
-
-	g, ctx := errgroup.WithContext(context.Background())
-
-	for _, vu := range e.vus {
-		vu := vu
-		g.Go(func() error {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-
-			default:
-				txnHashes, err := e.sendTransactionsForUser(vu, chainID)
-				if err != nil {
-					return err
-				}
-
-				allTxnHashes = append(allTxnHashes, txnHashes...)
-
-				return nil
-			}
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
-
-	fmt.Println("Sending transactions took", time.Since(start))
-
-	return allTxnHashes, nil
+	return e.BaseLoadTestRunner.sendTransactions(e.sendTransactionsForUser)
 }
 
 // sendTransactionsForUser sends ERC20 token transactions for a given user account.

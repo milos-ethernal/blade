@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -17,6 +18,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/umbracle/ethgo"
 	"github.com/umbracle/ethgo/wallet"
+	"golang.org/x/sync/errgroup"
 )
 
 // BaseLoadTestRunner represents a base load test runner.
@@ -242,7 +244,8 @@ func (r *BaseLoadTestRunner) waitForReceipt(txHash types.Hash) (*ethgo.Receipt, 
 	}
 }
 
-// calculateTPS calculates the transactions per second (TPS) for a given set of block information and transaction statistics.
+// calculateTPS calculates the transactions per second (TPS) for a given set of
+// block information and transaction statistics.
 // It takes a map of block information and an array of transaction statistics as input.
 // The function iterates over the transaction statistics and calculates the TPS for each block.
 // It also calculates the minimum and maximum TPS values, as well as the total time taken to mine the transactions.
@@ -322,7 +325,15 @@ func (r *BaseLoadTestRunner) calculateTPS(blockInfos map[uint64]blockInfo, txnSt
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Block Number", "Block Time (s)", "Num Txs", "Gas Used", "Gas Limit", "Gas Utilization", "TPS"})
+	table.SetHeader([]string{
+		"Block Number",
+		"Block Time (s)",
+		"Num Txs",
+		"Gas Used",
+		"Gas Limit",
+		"Gas Utilization",
+		"TPS",
+	})
 
 	infos := make([]blockInfo, 0, len(blockInfos))
 	for _, info := range blockInfos {
@@ -363,6 +374,55 @@ func (r *BaseLoadTestRunner) calculateTPS(blockInfos map[uint64]blockInfo, txnSt
 	table.Render()
 
 	return nil
+}
+
+// sendTransactions sends transactions for each virtual user (vu) and returns the transaction hashes.
+// It retrieves the chain ID from the client and uses it to send transactions for each user.
+// The function runs concurrently for each user using errgroup.
+// If the context is canceled, the function returns the context error.
+// The transaction hashes are appended to the allTxnHashes slice.
+// Finally, the function prints the time taken to send the transactions
+// and returns the transaction hashes and nil error.
+func (r *BaseLoadTestRunner) sendTransactions(sendFn func(*account, *big.Int) ([]types.Hash, error)) ([]types.Hash, error) {
+	chainID, err := r.client.ChainID()
+	if err != nil {
+		return nil, err
+	}
+
+	start := time.Now().UTC()
+
+	allTxnHashes := make([]types.Hash, 0, r.cfg.VUs*r.cfg.TxsPerUser)
+
+	g, ctx := errgroup.WithContext(context.Background())
+
+	for _, vu := range r.vus {
+		vu := vu
+
+		g.Go(func() error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+
+			default:
+				txnHashes, err := sendFn(vu, chainID)
+				if err != nil {
+					return err
+				}
+
+				allTxnHashes = append(allTxnHashes, txnHashes...)
+
+				return nil
+			}
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	fmt.Println("Sending transactions took", time.Since(start))
+
+	return allTxnHashes, nil
 }
 
 // runCommand executes command with given arguments
