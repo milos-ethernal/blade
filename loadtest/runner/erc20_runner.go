@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/0xPolygon/polygon-edge/consensus/polybft/contractsapi"
 	"github.com/0xPolygon/polygon-edge/contracts"
 	"github.com/0xPolygon/polygon-edge/jsonrpc"
 	"github.com/0xPolygon/polygon-edge/txrelayer"
@@ -91,11 +92,7 @@ func (e *ERC20Runner) deployERC20Token() error {
 	fmt.Println("Deploying ERC20 token contract")
 
 	start := time.Now().UTC()
-
-	artifact, err := contracts.LoadArtifactFromFile("../contracts/ZexCoinERC20.json")
-	if err != nil {
-		return err
-	}
+	artifact := contractsapi.ZexCoinERC20
 
 	input, err := artifact.Abi.Constructor.Inputs.Encode(map[string]interface{}{
 		"coinName":   "ZexCoin",
