@@ -18,6 +18,12 @@ const (
 
 var receiverAddr = types.StringToAddress("0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF")
 
+func IsLoadTestSupported(loadTestType string) bool {
+	ltp := strings.ToLower(loadTestType)
+
+	return ltp == EOATestType || ltp == ERC20TestType || ltp == ERC721TestType
+}
+
 type account struct {
 	nonce uint64
 	key   *crypto.ECDSAKey

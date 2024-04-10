@@ -23,7 +23,7 @@ func TestMnemonic(t *testing.T) {
 func TestLoadRunner(t *testing.T) {
 	cfg := LoadTestConfig{
 		Mnemonnic:       "code code code code code code code code code code code quality",
-		LoadTestType:    "erc20",
+		LoadTestType:    "eoa",
 		LoadTestName:    "test",
 		JSONRPCUrl:      "http://localhost:10002",
 		VUs:             10,

@@ -1,19 +1,17 @@
 package runner
 
 import (
-	"bytes"
 	"context"
-	"encoding/hex"
 	"fmt"
 	"math"
 	"math/big"
 	"os"
-	"os/exec"
 	"sort"
 	"time"
 
 	"github.com/0xPolygon/polygon-edge/crypto"
 	"github.com/0xPolygon/polygon-edge/jsonrpc"
+	"github.com/0xPolygon/polygon-edge/txrelayer"
 	"github.com/0xPolygon/polygon-edge/types"
 	"github.com/olekukonko/tablewriter"
 	"github.com/umbracle/ethgo"
@@ -28,7 +26,6 @@ type BaseLoadTestRunner struct {
 	loadTestAccount *account
 	vus             []*account
 
-	binary string
 	client *jsonrpc.EthClient
 }
 
@@ -53,11 +50,6 @@ func NewBaseLoadTestRunner(cfg LoadTestConfig) (*BaseLoadTestRunner, error) {
 		return nil, err
 	}
 
-	binary := os.Getenv("EDGE_BINARY")
-	if binary == "" {
-		binary = "../../blade"
-	}
-
 	client, err := jsonrpc.NewEthClient(cfg.JSONRPCUrl)
 	if err != nil {
 		return nil, err
@@ -66,7 +58,6 @@ func NewBaseLoadTestRunner(cfg LoadTestConfig) (*BaseLoadTestRunner, error) {
 	return &BaseLoadTestRunner{
 		cfg:             cfg,
 		loadTestAccount: &account{key: ecdsaKey},
-		binary:          binary,
 		client:          client,
 	}, nil
 }
@@ -100,32 +91,63 @@ func (r *BaseLoadTestRunner) createVUs() error {
 // The function returns an error if there was an issue during the funding process.
 func (r *BaseLoadTestRunner) fundVUs() error {
 	start := time.Now().UTC()
+	amountToFund := ethgo.Ether(1000)
 
-	rawKey, err := r.loadTestAccount.key.MarshallPrivateKey()
+	txRelayer, err := txrelayer.NewTxRelayer(
+		txrelayer.WithClient(r.client),
+		txrelayer.WithReceiptsTimeout(r.cfg.ReceiptsTimeout),
+		txrelayer.WithoutNonceGet(),
+	)
 	if err != nil {
 		return err
 	}
 
-	hexEncodedKey := hex.EncodeToString(rawKey)
-
-	args := []string{
-		"bridge", "fund",
-		"--json-rpc", r.cfg.JSONRPCUrl,
-		"--private-key", hexEncodedKey,
+	nonce, err := r.client.GetNonce(r.loadTestAccount.key.Address(), jsonrpc.PendingBlockNumberOrHash)
+	if err != nil {
+		return err
 	}
 
-	amountToFund := ethgo.Ether(1000)
+	g, ctx := errgroup.WithContext(context.Background())
 
-	for _, vu := range r.vus {
-		args = append(args, "--addresses", vu.key.Address().String())
-		args = append(args, "--amounts", amountToFund.String())
+	for i, vu := range r.vus {
+		i := i
+		vu := vu
+
+		g.Go(func() error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+				to := vu.key.Address()
+				tx := types.NewTx(types.NewLegacyTx(
+					types.WithTo(&to),
+					types.WithNonce(nonce+uint64(i)),
+					types.WithFrom(r.loadTestAccount.key.Address()),
+					types.WithValue(amountToFund),
+					types.WithGas(21000),
+				))
+
+				receipt, err := txRelayer.SendTransaction(tx, r.loadTestAccount.key)
+				if err != nil {
+					return err
+				}
+
+				if receipt == nil || receipt.Status != uint64(types.ReceiptSuccess) {
+					return fmt.Errorf("failed to mint ERC20 tokens to %s", vu.key.Address())
+				}
+
+				return nil
+			}
+		})
 	}
 
-	err = runCommand(r.binary, args)
+	if err := g.Wait(); err != nil {
+		return err
+	}
 
 	fmt.Println("Funding took", time.Since(start))
 
-	return err
+	return nil
 }
 
 // waitForTxPoolToEmpty waits for the transaction pool to become empty.
@@ -383,7 +405,8 @@ func (r *BaseLoadTestRunner) calculateTPS(blockInfos map[uint64]blockInfo, txnSt
 // The transaction hashes are appended to the allTxnHashes slice.
 // Finally, the function prints the time taken to send the transactions
 // and returns the transaction hashes and nil error.
-func (r *BaseLoadTestRunner) sendTransactions(sendFn func(*account, *big.Int) ([]types.Hash, error)) ([]types.Hash, error) {
+func (r *BaseLoadTestRunner) sendTransactions(
+	sendFn func(*account, *big.Int) ([]types.Hash, error)) ([]types.Hash, error) {
 	chainID, err := r.client.ChainID()
 	if err != nil {
 		return nil, err
@@ -423,27 +446,4 @@ func (r *BaseLoadTestRunner) sendTransactions(sendFn func(*account, *big.Int) ([
 	fmt.Println("Sending transactions took", time.Since(start))
 
 	return allTxnHashes, nil
-}
-
-// runCommand executes command with given arguments
-func runCommand(binary string, args []string) error {
-	var stdErr bytes.Buffer
-
-	cmd := exec.Command(binary, args...)
-	cmd.Stderr = &stdErr
-	cmd.Stdout = os.Stdout
-
-	if err := cmd.Run(); err != nil {
-		if stdErr.Len() > 0 {
-			return fmt.Errorf("failed to execute command: %s", stdErr.String())
-		}
-
-		return fmt.Errorf("failed to execute command: %w", err)
-	}
-
-	if stdErr.Len() > 0 {
-		return fmt.Errorf("error during command execution: %s", stdErr.String())
-	}
-
-	return nil
 }
