@@ -46,6 +46,8 @@ func NewERC20Runner(cfg LoadTestConfig) (*ERC20Runner, error) {
 // 8. Calculates the transactions per second (TPS) based on block information and transaction statistics.
 // Returns an error if any of the steps fail.
 func (e *ERC20Runner) Run() error {
+	fmt.Println("Running ERC20 load test", e.cfg.LoadTestName)
+
 	if err := e.createVUs(); err != nil {
 		return err
 	}
