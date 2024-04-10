@@ -1,11 +1,13 @@
 package runner
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/0xPolygon/polygon-edge/jsonrpc"
 	"github.com/0xPolygon/polygon-edge/txrelayer"
 	"github.com/0xPolygon/polygon-edge/types"
+	"github.com/schollz/progressbar/v3"
 	"github.com/umbracle/ethgo"
 )
 
@@ -31,6 +33,8 @@ func NewEOARunner(cfg LoadTestConfig) (*EOARunner, error) {
 // per second (TPS) based on the block information and transaction statistics.
 // It returns an error if any of the steps fail.
 func (e *EOARunner) Run() error {
+	fmt.Println("Running EOA load test", e.cfg.LoadTestName)
+
 	if err := e.createVUs(); err != nil {
 		return err
 	}
@@ -65,7 +69,8 @@ func (e *EOARunner) sendTransactions() ([]types.Hash, error) {
 // It uses the provided client and chain ID to send transactions using either dynamic or legacy fee models.
 // For each transaction, it increments the account's nonce and returns the transaction hashes.
 // If an error occurs during the transaction sending process, it returns the error.
-func (e *EOARunner) sendTransactionsForUser(account *account, chainID *big.Int) ([]types.Hash, error) {
+func (e *EOARunner) sendTransactionsForUser(account *account, chainID *big.Int,
+	bar *progressbar.ProgressBar) ([]types.Hash, error) {
 	txRelayer, err := txrelayer.NewTxRelayer(
 		txrelayer.WithClient(e.client),
 		txrelayer.WithChainID(chainID),
@@ -141,6 +146,7 @@ func (e *EOARunner) sendTransactionsForUser(account *account, chainID *big.Int) 
 		}
 
 		account.nonce++
+		bar.Add(1)
 	}
 
 	return txRelayer.GetTxnHashes(), nil

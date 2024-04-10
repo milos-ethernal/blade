@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/0xPolygon/polygon-edge/contracts"
 	"github.com/0xPolygon/polygon-edge/jsonrpc"
 	"github.com/0xPolygon/polygon-edge/txrelayer"
 	"github.com/0xPolygon/polygon-edge/types"
+	"github.com/schollz/progressbar/v3"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -85,6 +87,11 @@ func (e *ERC20Runner) Run() error {
 // and artifact in the ERC20Runner instance.
 // Returns an error if any step of the deployment process fails.
 func (e *ERC20Runner) deployERC20Token() error {
+	fmt.Println("=============================================================")
+	fmt.Println("Deploying ERC20 token contract")
+
+	start := time.Now().UTC()
+
 	artifact, err := contracts.LoadArtifactFromFile("../contracts/ZexCoinERC20.json")
 	if err != nil {
 		return err
@@ -126,6 +133,8 @@ func (e *ERC20Runner) deployERC20Token() error {
 	e.erc20Token = types.Address(receipt.ContractAddress)
 	e.erc20TokenArtifact = artifact
 
+	fmt.Printf("Deploying ERC20 token took %s\n", time.Since(start))
+
 	return nil
 }
 
@@ -134,6 +143,12 @@ func (e *ERC20Runner) deployERC20Token() error {
 // The transaction is sent using a transaction relayer, and the result is checked for success.
 // If any error occurs during the minting process, an error is returned.
 func (e *ERC20Runner) mintERC20TokenToVUs() error {
+	fmt.Println("=============================================================")
+	start := time.Now().UTC()
+
+	bar := progressbar.Default(int64(e.cfg.VUs), "Minting ERC20 tokens to VUs")
+	defer bar.Close()
+
 	txRelayer, err := txrelayer.NewTxRelayer(
 		txrelayer.WithClient(e.client),
 		txrelayer.WithReceiptsTimeout(e.cfg.ReceiptsTimeout),
@@ -183,12 +198,20 @@ func (e *ERC20Runner) mintERC20TokenToVUs() error {
 					return fmt.Errorf("failed to mint ERC20 tokens to %s", vu.key.Address())
 				}
 
+				bar.Add(1)
+
 				return nil
 			}
 		})
 	}
 
-	return g.Wait()
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	fmt.Printf("Minting ERC20 tokens took %s\n", time.Since(start))
+
+	return nil
 }
 
 // sendTransactions sends transactions for the load test.
@@ -199,7 +222,8 @@ func (e *ERC20Runner) sendTransactions() ([]types.Hash, error) {
 // sendTransactionsForUser sends ERC20 token transactions for a given user account.
 // It takes an account pointer and a chainID as input parameters.
 // It returns a slice of transaction hashes and an error if any.
-func (e *ERC20Runner) sendTransactionsForUser(account *account, chainID *big.Int) ([]types.Hash, error) {
+func (e *ERC20Runner) sendTransactionsForUser(account *account, chainID *big.Int,
+	bar *progressbar.ProgressBar) ([]types.Hash, error) {
 	txRelayer, err := txrelayer.NewTxRelayer(
 		txrelayer.WithClient(e.client),
 		txrelayer.WithChainID(chainID),
@@ -281,6 +305,7 @@ func (e *ERC20Runner) sendTransactionsForUser(account *account, chainID *big.Int
 		}
 
 		account.nonce++
+		bar.Add(1)
 	}
 
 	return txRelayer.GetTxnHashes(), nil

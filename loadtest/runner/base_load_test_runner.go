@@ -14,6 +14,7 @@ import (
 	"github.com/0xPolygon/polygon-edge/txrelayer"
 	"github.com/0xPolygon/polygon-edge/types"
 	"github.com/olekukonko/tablewriter"
+	"github.com/schollz/progressbar/v3"
 	"github.com/umbracle/ethgo"
 	"github.com/umbracle/ethgo/wallet"
 	"golang.org/x/sync/errgroup"
@@ -72,6 +73,12 @@ func (r *BaseLoadTestRunner) Close() error {
 // It generates ECDSA keys for each VU and stores them in the `vus` slice.
 // Returns an error if there was a problem generating the keys.
 func (r *BaseLoadTestRunner) createVUs() error {
+	fmt.Println("=============================================================")
+
+	start := time.Now().UTC()
+	bar := progressbar.Default(int64(r.cfg.VUs), "Creating virtual users")
+	defer bar.Close()
+
 	for i := 0; i < r.cfg.VUs; i++ {
 		key, err := crypto.GenerateECDSAKey()
 		if err != nil {
@@ -79,7 +86,10 @@ func (r *BaseLoadTestRunner) createVUs() error {
 		}
 
 		r.vus = append(r.vus, &account{key: key})
+		bar.Add(1)
 	}
+
+	fmt.Println("Creating virtual users took", time.Since(start))
 
 	return nil
 }
@@ -90,7 +100,12 @@ func (r *BaseLoadTestRunner) createVUs() error {
 // The amount to fund is set to 1000 Ether.
 // The function returns an error if there was an issue during the funding process.
 func (r *BaseLoadTestRunner) fundVUs() error {
+	fmt.Println("=============================================================")
+
 	start := time.Now().UTC()
+	bar := progressbar.Default(int64(r.cfg.VUs), "Funding virtual users with native tokens")
+	defer bar.Close()
+
 	amountToFund := ethgo.Ether(1000)
 
 	txRelayer, err := txrelayer.NewTxRelayer(
@@ -136,6 +151,8 @@ func (r *BaseLoadTestRunner) fundVUs() error {
 					return fmt.Errorf("failed to mint ERC20 tokens to %s", vu.key.Address())
 				}
 
+				bar.Add(1)
+
 				return nil
 			}
 		})
@@ -156,6 +173,9 @@ func (r *BaseLoadTestRunner) fundVUs() error {
 // If the transaction pool does not become empty within the specified timeout,
 // it returns an error.
 func (r *BaseLoadTestRunner) waitForTxPoolToEmpty() error {
+	fmt.Println("=============================================================")
+	fmt.Println("Waiting for tx pool to empty...")
+
 	timer := time.NewTimer(r.cfg.TxPoolTimeout)
 	defer timer.Stop()
 
@@ -185,15 +205,20 @@ func (r *BaseLoadTestRunner) waitForTxPoolToEmpty() error {
 // waitForReceipts waits for the receipts of the given transaction hashes and returns
 // a map of block information, transaction statistics, and an error if any.
 func (r *BaseLoadTestRunner) waitForReceipts(txHashes []types.Hash) (map[uint64]blockInfo, []txStats, error) {
+	fmt.Println("=============================================================")
 	start := time.Now().UTC()
 
 	blockInfoMap := make(map[uint64]blockInfo)
 	txToBlockMap := make(map[types.Hash]uint64)
 	txnStats := make([]txStats, 0, len(txHashes))
 
+	bar := progressbar.Default(int64(len(txHashes)), "Gathering receipts")
+	defer bar.Close()
+
 	for _, txHash := range txHashes {
 		if blockNum, exists := txToBlockMap[txHash]; exists {
 			txnStats = append(txnStats, txStats{txHash, blockNum})
+			bar.Add(1)
 
 			continue
 		}
@@ -204,6 +229,7 @@ func (r *BaseLoadTestRunner) waitForReceipts(txHashes []types.Hash) (map[uint64]
 		}
 
 		txnStats = append(txnStats, txStats{txHash, receipt.BlockNumber})
+		bar.Add(1)
 
 		block, err := r.client.GetBlockByNumber(jsonrpc.BlockNumber(receipt.BlockNumber), true)
 		if err != nil {
@@ -274,6 +300,9 @@ func (r *BaseLoadTestRunner) waitForReceipt(txHash types.Hash) (*ethgo.Receipt, 
 // The calculated TPS values are displayed in a table using the tablewriter package.
 // The function returns an error if there is any issue retrieving block information or calculating TPS.
 func (r *BaseLoadTestRunner) calculateTPS(blockInfos map[uint64]blockInfo, txnStats []txStats) error {
+	fmt.Println("=============================================================")
+	fmt.Println("Calculating results...")
+
 	var (
 		totalTxs        = len(txnStats)
 		totalTime       float64
@@ -406,15 +435,21 @@ func (r *BaseLoadTestRunner) calculateTPS(blockInfos map[uint64]blockInfo, txnSt
 // Finally, the function prints the time taken to send the transactions
 // and returns the transaction hashes and nil error.
 func (r *BaseLoadTestRunner) sendTransactions(
-	sendFn func(*account, *big.Int) ([]types.Hash, error)) ([]types.Hash, error) {
+	sendFn func(*account, *big.Int, *progressbar.ProgressBar) ([]types.Hash, error)) ([]types.Hash, error) {
+	fmt.Println("=============================================================")
+
 	chainID, err := r.client.ChainID()
 	if err != nil {
 		return nil, err
 	}
 
 	start := time.Now().UTC()
+	totalTxs := r.cfg.VUs * r.cfg.TxsPerUser
 
-	allTxnHashes := make([]types.Hash, 0, r.cfg.VUs*r.cfg.TxsPerUser)
+	bar := progressbar.Default(int64(totalTxs), "Sending transactions")
+	defer bar.Close()
+
+	allTxnHashes := make([]types.Hash, 0)
 
 	g, ctx := errgroup.WithContext(context.Background())
 
@@ -427,7 +462,7 @@ func (r *BaseLoadTestRunner) sendTransactions(
 				return ctx.Err()
 
 			default:
-				txnHashes, err := sendFn(vu, chainID)
+				txnHashes, err := sendFn(vu, chainID, bar)
 				if err != nil {
 					return err
 				}
