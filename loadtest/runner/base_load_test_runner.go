@@ -191,7 +191,7 @@ func (r *BaseLoadTestRunner) waitForTxPoolToEmpty() error {
 	timer := time.NewTimer(r.cfg.TxPoolTimeout)
 	defer timer.Stop()
 
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
 	for {

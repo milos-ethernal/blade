@@ -26,11 +26,15 @@ func NewEOARunner(cfg LoadTestConfig) (*EOARunner, error) {
 	return &EOARunner{runner}, nil
 }
 
-// Run executes the load test by creating virtual users, funding them,
-// sending transactions, waiting for the transaction pool to empty,
-// waiting for transaction receipts, and calculating the transactions
-// per second (TPS) based on the block information and transaction statistics.
-// It returns an error if any of the steps fail.
+// Run executes the EOA load test.
+// It performs the following steps:
+// 1. Creates virtual users (VUs).
+// 2. Funds the VUs with native tokens.
+// 3. Sends EOA transactions using the VUs.
+// 4. Waits for the transaction pool to empty.
+// 5. Waits for transaction receipts.
+// 6. Calculates the transactions per second (TPS) based on block information and transaction statistics.
+// Returns an error if any of the steps fail.
 func (e *EOARunner) Run() error {
 	fmt.Println("Running EOA load test", e.cfg.LoadTestName)
 

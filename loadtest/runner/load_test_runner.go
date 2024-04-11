@@ -83,6 +83,13 @@ func (r *LoadTestRunner) Run(cfg LoadTestConfig) error {
 		}
 
 		return erc20Runner.Run()
+	case ERC721TestType:
+		erc721Runner, err := NewERC721Runner(cfg)
+		if err != nil {
+			return err
+		}
+
+		return erc721Runner.Run()
 	default:
 		return fmt.Errorf("unknown load test type %s", cfg.LoadTestType)
 	}
