@@ -34,14 +34,17 @@ type txStats struct {
 	block uint64
 }
 
-type blockInfo struct {
-	number    uint64
-	createdAt uint64
-	numTxs    int
+type BlockInfo struct {
+	Number    uint64
+	CreatedAt uint64
+	NumTxs    int
 
-	gasUsed        *big.Int
-	gasLimit       *big.Int
-	gasUtilization float64
+	GasUsed        *big.Int
+	GasLimit       *big.Int
+	GasUtilization float64
+
+	TPS       float64
+	BlockTime float64
 }
 
 // LoadTestConfig represents the configuration for a load test.
@@ -58,6 +61,8 @@ type LoadTestConfig struct {
 	VUs        int  // VUs is the number of virtual users.
 	TxsPerUser int  // TxsPerUser is the number of transactions per user.
 	DynamicTxs bool // DynamicTxs indicates whether the load test should generate dynamic transactions.
+
+	ResultsToJSON bool // ResultsToJSON indicates whether the results should be written in JSON format.
 }
 
 // LoadTestRunner represents a runner for load tests.

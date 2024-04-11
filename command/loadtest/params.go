@@ -18,6 +18,8 @@ const (
 	vusFlag        = "vus"
 	txsPerUserFlag = "txs-per-user"
 	dynamicTxsFlag = "dynamic"
+
+	saveToJSONFlag = "to-json"
 )
 
 var (
@@ -40,6 +42,7 @@ type loadTestParams struct {
 	vus        int
 	txsPerUser int
 	dynamicTxs bool
+	toJSON     bool
 }
 
 func (ltp *loadTestParams) validateFlags() error {

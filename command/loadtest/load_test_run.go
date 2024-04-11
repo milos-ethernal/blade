@@ -92,6 +92,13 @@ func setFlags(cmd *cobra.Command) {
 		"the timeout for waiting for the transaction pool to empty",
 	)
 
+	cmd.Flags().BoolVar(
+		&params.toJSON,
+		saveToJSONFlag,
+		false,
+		"saves results to JSON file",
+	)
+
 	_ = cmd.MarkFlagRequired(mnemonicFlag)
 	_ = cmd.MarkFlagRequired(loadTestTypeFlag)
 }
@@ -112,6 +119,7 @@ func runCommand(cmd *cobra.Command, _ []string) {
 		VUs:             params.vus,
 		TxsPerUser:      params.txsPerUser,
 		DynamicTxs:      params.dynamicTxs,
+		ResultsToJSON:   params.toJSON,
 	})
 
 	if err != nil {

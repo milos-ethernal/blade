@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"math/big"
@@ -216,11 +217,11 @@ func (r *BaseLoadTestRunner) waitForTxPoolToEmpty() error {
 
 // waitForReceipts waits for the receipts of the given transaction hashes and returns
 // a map of block information, transaction statistics, and an error if any.
-func (r *BaseLoadTestRunner) waitForReceipts(txHashes []types.Hash) (map[uint64]blockInfo, []txStats) {
+func (r *BaseLoadTestRunner) waitForReceipts(txHashes []types.Hash) (map[uint64]*BlockInfo, []txStats) {
 	fmt.Println("=============================================================")
 
 	start := time.Now().UTC()
-	blockInfoMap := make(map[uint64]blockInfo)
+	blockInfoMap := make(map[uint64]*BlockInfo)
 	txToBlockMap := make(map[types.Hash]uint64)
 	txnStats := make([]txStats, 0, len(txHashes))
 	bar := progressbar.Default(int64(len(txHashes)), "Gathering receipts")
@@ -265,13 +266,13 @@ func (r *BaseLoadTestRunner) waitForReceipts(txHashes []types.Hash) (map[uint64]
 
 		gu, _ := gasUtilization.Float64()
 
-		blockInfoMap[receipt.BlockNumber] = blockInfo{
-			number:         receipt.BlockNumber,
-			createdAt:      block.Header.Timestamp,
-			numTxs:         len(block.Transactions),
-			gasUsed:        new(big.Int).SetUint64(block.Header.GasUsed),
-			gasLimit:       new(big.Int).SetUint64(block.Header.GasLimit),
-			gasUtilization: gu,
+		blockInfoMap[receipt.BlockNumber] = &BlockInfo{
+			Number:         receipt.BlockNumber,
+			CreatedAt:      block.Header.Timestamp,
+			NumTxs:         len(block.Transactions),
+			GasUsed:        new(big.Int).SetUint64(block.Header.GasUsed),
+			GasLimit:       new(big.Int).SetUint64(block.Header.GasLimit),
+			GasUtilization: gu,
 		}
 
 		for _, txn := range block.Transactions {
@@ -327,7 +328,7 @@ func (r *BaseLoadTestRunner) waitForReceipt(txHash types.Hash) (*ethgo.Receipt, 
 // It also calculates the minimum and maximum TPS values, as well as the total time taken to mine the transactions.
 // The calculated TPS values are displayed in a table using the tablewriter package.
 // The function returns an error if there is any issue retrieving block information or calculating TPS.
-func (r *BaseLoadTestRunner) calculateTPS(blockInfos map[uint64]blockInfo, txnStats []txStats) error {
+func (r *BaseLoadTestRunner) calculateTPS(blockInfos map[uint64]*BlockInfo, txnStats []txStats) error {
 	fmt.Println("=============================================================")
 	fmt.Println("Calculating results...")
 
@@ -362,7 +363,7 @@ func (r *BaseLoadTestRunner) calculateTPS(blockInfos map[uint64]blockInfo, txnSt
 
 				blockTimeMap[parentBlockNum] = parentBlock.Header.Timestamp
 			} else {
-				blockTimeMap[parentBlockNum] = parentBlockInfo.createdAt
+				blockTimeMap[parentBlockNum] = parentBlockInfo.CreatedAt
 			}
 		}
 
@@ -378,13 +379,13 @@ func (r *BaseLoadTestRunner) calculateTPS(blockInfos map[uint64]blockInfo, txnSt
 				blockTimeMap[block] = currentBlock.Header.Timestamp
 				currentBlockTxsNum = len(currentBlock.Transactions)
 			} else {
-				blockTimeMap[block] = currentBlockInfo.createdAt
-				currentBlockTxsNum = currentBlockInfo.numTxs
+				blockTimeMap[block] = currentBlockInfo.CreatedAt
+				currentBlockTxsNum = currentBlockInfo.NumTxs
 			}
 		}
 
 		if currentBlockTxsNum == 0 {
-			currentBlockTxsNum = blockInfos[block].numTxs
+			currentBlockTxsNum = blockInfos[block].NumTxs
 		}
 
 		currentBlockTimestamp := blockTimeMap[block]
@@ -403,54 +404,77 @@ func (r *BaseLoadTestRunner) calculateTPS(blockInfos map[uint64]blockInfo, txnSt
 		totalTime += blockTime
 	}
 
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{
-		"Block Number",
-		"Block Time (s)",
-		"Num Txs",
-		"Gas Used",
-		"Gas Limit",
-		"Gas Utilization",
-		"TPS",
-	})
-
-	infos := make([]blockInfo, 0, len(blockInfos))
+	infos := make([]*BlockInfo, 0, len(blockInfos))
 	for _, info := range blockInfos {
+		info.BlockTime = math.Abs(float64(info.CreatedAt - blockTimeMap[info.Number-1]))
+		info.TPS = float64(info.NumTxs) / info.BlockTime
+
 		infos = append(infos, info)
 	}
 
 	sort.Slice(infos, func(i, j int) bool {
-		return infos[i].number < infos[j].number
+		return infos[i].Number < infos[j].Number
 	})
 
-	for _, blockInfo := range infos {
-		blockTime := math.Abs(float64(blockInfo.createdAt - blockTimeMap[blockInfo.number-1]))
-		tps := float64(blockInfo.numTxs) / blockTime
+	avgTxsPerSecond := math.Ceil(float64(totalTxs) / totalTime)
 
-		table.Append([]string{
-			fmt.Sprintf("%d", blockInfo.number),
-			fmt.Sprintf("%.2f", blockTime),
-			fmt.Sprintf("%d", blockInfo.numTxs),
-			fmt.Sprintf("%d", blockInfo.gasUsed.Uint64()),
-			fmt.Sprintf("%d", blockInfo.gasLimit.Uint64()),
-			fmt.Sprintf("%.2f", blockInfo.gasUtilization),
-			fmt.Sprintf("%.2f", tps),
-		})
+	if !r.cfg.ResultsToJSON {
+		return printResults(
+			totalTxs, totalTime,
+			maxTxsPerSecond, minTxsPerSecond, avgTxsPerSecond,
+			infos,
+		)
 	}
 
-	table.Render()
+	return r.saveResultsToJsonFile(
+		totalTxs, totalTime,
+		maxTxsPerSecond, minTxsPerSecond, avgTxsPerSecond,
+		infos,
+	)
+}
 
-	table = tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Total Txs", "Total Time To Mine (s)", "Min TPS", "Max TPS", "Average TPS"})
-	table.Append([]string{
-		fmt.Sprintf("%d", totalTxs),
-		fmt.Sprintf("%.2f", totalTime),
-		fmt.Sprintf("%.2f", minTxsPerSecond),
-		fmt.Sprintf("%.2f", maxTxsPerSecond),
-		fmt.Sprintf("%.2f", math.Ceil(float64(totalTxs)/totalTime)),
-	})
+// saveResultsToJsonFile saves the load test results to a JSON file.
+// It takes the total number of transactions (totalTxs), total time taken (totalTime),
+// maximum transactions per second (maxTxsPerSecond), minimum transactions per second (minTxsPerSecond),
+// average transactions per second (avgTxsPerSecond), and a map of block information (blockInfos).
+// It returns an error if there was a problem saving the results to the file.
+func (r *BaseLoadTestRunner) saveResultsToJsonFile(
+	totalTxs int, totalTime float64,
+	maxTxsPerSecond float64, minTxsPerSecond float64, avgTxsPerSecond float64,
+	blockInfos []*BlockInfo) error {
+	fmt.Println("Saving results to JSON file...")
 
-	table.Render()
+	type Result struct {
+		TotalTxs        int          `json:"totalTxs"`
+		TotalTime       float64      `json:"totalTime"`
+		MinTxsPerSecond float64      `json:"minTxsPerSecond"`
+		MaxTxsPerSecond float64      `json:"maxTxsPerSecond"`
+		AvgTxsPerSecond float64      `json:"avgTxsPerSecond"`
+		Blocks          []*BlockInfo `json:"blocks"`
+	}
+
+	result := Result{
+		TotalTxs:        totalTxs,
+		TotalTime:       totalTime,
+		MinTxsPerSecond: minTxsPerSecond,
+		MaxTxsPerSecond: maxTxsPerSecond,
+		AvgTxsPerSecond: avgTxsPerSecond,
+		Blocks:          blockInfos,
+	}
+
+	jsonData, err := json.Marshal(result)
+	if err != nil {
+		return err
+	}
+
+	fileName := fmt.Sprintf("./%s_%s.json", r.cfg.LoadTestName, r.cfg.LoadTestType)
+
+	err = os.WriteFile(fileName, jsonData, 0644)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Results saved to JSON file", fileName)
 
 	return nil
 }
@@ -523,6 +547,12 @@ func (r *BaseLoadTestRunner) sendTransactions(
 	return allTxnHashes, nil
 }
 
+// getFeeData retrieves fee data based on the provided JSON-RPC Ethereum client and dynamicTxs flag.
+// If dynamicTxs is true, it calculates the gasTipCap and gasFeeCap based on the MaxPriorityFeePerGas,
+// FeeHistory, and BaseFee values obtained from the client. If dynamicTxs is false, it calculates the
+// gasPrice based on the GasPrice value obtained from the client.
+// The function returns a feeData struct containing the calculated fee values.
+// If an error occurs during the retrieval or calculation, the function returns nil and the error.
 func getFeeData(client *jsonrpc.EthClient, dynamicTxs bool) (*feeData, error) {
 	feeData := &feeData{}
 
@@ -562,4 +592,48 @@ func getFeeData(client *jsonrpc.EthClient, dynamicTxs bool) (*feeData, error) {
 	}
 
 	return feeData, nil
+}
+
+// printResults prints the results of the load test to stdout in a form of a table
+func printResults(totalTxs int, totalTime float64,
+	maxTxsPerSecond float64, minTxsPerSecond float64, avgTxsPerSecond float64,
+	blockInfos []*BlockInfo) error {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{
+		"Block Number",
+		"Block Time (s)",
+		"Num Txs",
+		"Gas Used",
+		"Gas Limit",
+		"Gas Utilization",
+		"TPS",
+	})
+
+	for _, blockInfo := range blockInfos {
+		table.Append([]string{
+			fmt.Sprintf("%d", blockInfo.Number),
+			fmt.Sprintf("%.2f", blockInfo.BlockTime),
+			fmt.Sprintf("%d", blockInfo.NumTxs),
+			fmt.Sprintf("%d", blockInfo.GasUsed.Uint64()),
+			fmt.Sprintf("%d", blockInfo.GasLimit.Uint64()),
+			fmt.Sprintf("%.2f", blockInfo.GasUtilization),
+			fmt.Sprintf("%.2f", blockInfo.TPS),
+		})
+	}
+
+	table.Render()
+
+	table = tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Total Txs", "Total Time To Mine (s)", "Min TPS", "Max TPS", "Average TPS"})
+	table.Append([]string{
+		fmt.Sprintf("%d", totalTxs),
+		fmt.Sprintf("%.2f", totalTime),
+		fmt.Sprintf("%.2f", minTxsPerSecond),
+		fmt.Sprintf("%.2f", maxTxsPerSecond),
+		fmt.Sprintf("%.2f", avgTxsPerSecond),
+	})
+
+	table.Render()
+
+	return nil
 }
