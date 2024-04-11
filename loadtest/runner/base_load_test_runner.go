@@ -86,6 +86,7 @@ func (r *BaseLoadTestRunner) createVUs() error {
 
 	defer func() {
 		_ = bar.Close()
+
 		fmt.Println("Creating virtual users took", time.Since(start))
 	}()
 
@@ -115,6 +116,7 @@ func (r *BaseLoadTestRunner) fundVUs() error {
 
 	defer func() {
 		_ = bar.Close()
+
 		fmt.Println("Funding took", time.Since(start))
 	}()
 
@@ -225,6 +227,7 @@ func (r *BaseLoadTestRunner) waitForReceipts(txHashes []types.Hash) (map[uint64]
 
 	defer func() {
 		_ = bar.Close()
+
 		fmt.Println("Waiting for receipts took", time.Since(start))
 	}()
 
@@ -475,6 +478,7 @@ func (r *BaseLoadTestRunner) sendTransactions(
 
 	defer func() {
 		_ = bar.Close()
+
 		fmt.Println("Sending transactions took", time.Since(start))
 	}()
 

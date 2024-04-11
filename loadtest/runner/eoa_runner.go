@@ -82,7 +82,7 @@ func (e *EOARunner) sendTransactionsForUser(account *account, chainID *big.Int,
 	}
 
 	sendErrs := make([]error, 0)
-	checkFeeDataNum := e.cfg.TxsPerUser / 2
+	checkFeeDataNum := e.cfg.TxsPerUser / 3
 
 	for i := 0; i < e.cfg.TxsPerUser; i++ {
 		var err error
