@@ -140,9 +140,12 @@ func (e *ERC20Runner) mintERC20TokenToVUs() error {
 	fmt.Println("=============================================================")
 
 	start := time.Now().UTC()
-
 	bar := progressbar.Default(int64(e.cfg.VUs), "Minting ERC20 tokens to VUs")
-	defer bar.Close()
+
+	defer func() {
+		_ = bar.Close()
+		fmt.Printf("Minting ERC20 tokens took %s\n", time.Since(start))
+	}()
 
 	txRelayer, err := txrelayer.NewTxRelayer(
 		txrelayer.WithClient(e.client),
@@ -193,7 +196,7 @@ func (e *ERC20Runner) mintERC20TokenToVUs() error {
 					return fmt.Errorf("failed to mint ERC20 tokens to %s", vu.key.Address())
 				}
 
-				bar.Add(1)
+				_ = bar.Add(1)
 
 				return nil
 			}
@@ -203,8 +206,6 @@ func (e *ERC20Runner) mintERC20TokenToVUs() error {
 	if err := g.Wait(); err != nil {
 		return err
 	}
-
-	fmt.Printf("Minting ERC20 tokens took %s\n", time.Since(start))
 
 	return nil
 }
@@ -280,7 +281,7 @@ func (e *ERC20Runner) sendTransactionsForUser(account *account, chainID *big.Int
 		}
 
 		account.nonce++
-		bar.Add(1)
+		_ = bar.Add(1)
 	}
 
 	return txRelayer.GetTxnHashes(), sendErrs, nil

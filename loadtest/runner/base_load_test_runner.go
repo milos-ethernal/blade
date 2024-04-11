@@ -20,8 +20,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const transactionRetryNum = 5
-
 type feeData struct {
 	gasPrice  *big.Int
 	gasTipCap *big.Int
@@ -85,7 +83,11 @@ func (r *BaseLoadTestRunner) createVUs() error {
 
 	start := time.Now().UTC()
 	bar := progressbar.Default(int64(r.cfg.VUs), "Creating virtual users")
-	defer bar.Close()
+
+	defer func() {
+		_ = bar.Close()
+		fmt.Println("Creating virtual users took", time.Since(start))
+	}()
 
 	for i := 0; i < r.cfg.VUs; i++ {
 		key, err := crypto.GenerateECDSAKey()
@@ -94,10 +96,8 @@ func (r *BaseLoadTestRunner) createVUs() error {
 		}
 
 		r.vus = append(r.vus, &account{key: key})
-		bar.Add(1)
+		_ = bar.Add(1)
 	}
-
-	fmt.Println("Creating virtual users took", time.Since(start))
 
 	return nil
 }
@@ -112,7 +112,11 @@ func (r *BaseLoadTestRunner) fundVUs() error {
 
 	start := time.Now().UTC()
 	bar := progressbar.Default(int64(r.cfg.VUs), "Funding virtual users with native tokens")
-	defer bar.Close()
+
+	defer func() {
+		_ = bar.Close()
+		fmt.Println("Funding took", time.Since(start))
+	}()
 
 	amountToFund := ethgo.Ether(1000)
 
@@ -159,7 +163,7 @@ func (r *BaseLoadTestRunner) fundVUs() error {
 					return fmt.Errorf("failed to mint ERC20 tokens to %s", vu.key.Address())
 				}
 
-				bar.Add(1)
+				_ = bar.Add(1)
 
 				return nil
 			}
@@ -169,8 +173,6 @@ func (r *BaseLoadTestRunner) fundVUs() error {
 	if err := g.Wait(); err != nil {
 		return err
 	}
-
-	fmt.Println("Funding took", time.Since(start))
 
 	return nil
 }
@@ -214,21 +216,24 @@ func (r *BaseLoadTestRunner) waitForTxPoolToEmpty() error {
 // a map of block information, transaction statistics, and an error if any.
 func (r *BaseLoadTestRunner) waitForReceipts(txHashes []types.Hash) (map[uint64]blockInfo, []txStats) {
 	fmt.Println("=============================================================")
-	start := time.Now().UTC()
 
+	start := time.Now().UTC()
 	blockInfoMap := make(map[uint64]blockInfo)
 	txToBlockMap := make(map[types.Hash]uint64)
 	txnStats := make([]txStats, 0, len(txHashes))
-
 	bar := progressbar.Default(int64(len(txHashes)), "Gathering receipts")
-	defer bar.Close()
+
+	defer func() {
+		_ = bar.Close()
+		fmt.Println("Waiting for receipts took", time.Since(start))
+	}()
 
 	foundErrors := make([]error, 0)
 
 	for _, txHash := range txHashes {
 		if blockNum, exists := txToBlockMap[txHash]; exists {
 			txnStats = append(txnStats, txStats{txHash, blockNum})
-			bar.Add(1)
+			_ = bar.Add(1)
 
 			continue
 		}
@@ -241,7 +246,7 @@ func (r *BaseLoadTestRunner) waitForReceipts(txHashes []types.Hash) (map[uint64]
 		}
 
 		txnStats = append(txnStats, txStats{txHash, receipt.BlockNumber})
-		bar.Add(1)
+		_ = bar.Add(1)
 
 		block, err := r.client.GetBlockByNumber(jsonrpc.BlockNumber(receipt.BlockNumber), true)
 		if err != nil {
@@ -271,10 +276,9 @@ func (r *BaseLoadTestRunner) waitForReceipts(txHashes []types.Hash) (map[uint64]
 		}
 	}
 
-	fmt.Println("Waiting for receipts took", time.Since(start))
-
 	if len(foundErrors) > 0 {
 		fmt.Println("Errors found while waiting for receipts:")
+
 		for _, err := range foundErrors {
 			fmt.Println(err)
 		}
@@ -467,9 +471,12 @@ func (r *BaseLoadTestRunner) sendTransactions(
 	start := time.Now().UTC()
 	totalTxs := r.cfg.VUs * r.cfg.TxsPerUser
 	foundErrs := make([]error, 0)
-
 	bar := progressbar.Default(int64(totalTxs), "Sending transactions")
-	defer bar.Close()
+
+	defer func() {
+		_ = bar.Close()
+		fmt.Println("Sending transactions took", time.Since(start))
+	}()
 
 	allTxnHashes := make([]types.Hash, 0)
 
@@ -501,10 +508,9 @@ func (r *BaseLoadTestRunner) sendTransactions(
 		return nil, err
 	}
 
-	fmt.Println("Sending transactions took", time.Since(start))
-
 	if len(foundErrs) > 0 {
 		fmt.Println("Errors found while sending transactions:")
+
 		for _, err := range foundErrs {
 			fmt.Println(err)
 		}

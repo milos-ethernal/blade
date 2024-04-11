@@ -121,7 +121,7 @@ func (e *EOARunner) sendTransactionsForUser(account *account, chainID *big.Int,
 		}
 
 		account.nonce++
-		bar.Add(1)
+		_ = bar.Add(1)
 	}
 
 	return txRelayer.GetTxnHashes(), sendErrs, nil
