@@ -13,7 +13,6 @@ var (
 	params loadTestParams
 )
 
-// GetCommand returns the rootchain fund command
 func GetCommand() *cobra.Command {
 	loadTestCmd := &cobra.Command{
 		Use:     "load-test",
