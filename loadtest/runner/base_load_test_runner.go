@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"os"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/0xPolygon/polygon-edge/crypto"
@@ -234,51 +235,80 @@ func (r *BaseLoadTestRunner) waitForReceipts(txHashes []types.Hash) (map[uint64]
 
 	foundErrors := make([]error, 0)
 
-	for _, txHash := range txHashes {
-		if blockNum, exists := txToBlockMap[txHash]; exists {
-			txnStats = append(txnStats, txStats{txHash, blockNum})
+	getTxReceipts := func(txHashes []types.Hash) {
+		for _, txHash := range txHashes {
+			if blockNum, exists := txToBlockMap[txHash]; exists {
+				txnStats = append(txnStats, txStats{txHash, blockNum})
+				_ = bar.Add(1)
+
+				continue
+			}
+
+			receipt, err := r.waitForReceipt(txHash)
+			if err != nil {
+				foundErrors = append(foundErrors, err)
+
+				continue
+			}
+
+			txnStats = append(txnStats, txStats{txHash, receipt.BlockNumber})
 			_ = bar.Add(1)
 
-			continue
-		}
+			block, err := r.client.GetBlockByNumber(jsonrpc.BlockNumber(receipt.BlockNumber), true)
+			if err != nil {
+				foundErrors = append(foundErrors, err)
 
-		receipt, err := r.waitForReceipt(txHash)
-		if err != nil {
-			foundErrors = append(foundErrors, err)
+				continue
+			}
 
-			continue
-		}
+			gasUsed := new(big.Int).SetUint64(block.Header.GasUsed)
+			gasLimit := new(big.Int).SetUint64(block.Header.GasLimit)
+			gasUtilization := new(big.Int).Mul(gasUsed, big.NewInt(10000))
+			gasUtilization = gasUtilization.Div(gasUtilization, gasLimit).Div(gasUtilization, big.NewInt(100))
 
-		txnStats = append(txnStats, txStats{txHash, receipt.BlockNumber})
-		_ = bar.Add(1)
+			gu, _ := gasUtilization.Float64()
 
-		block, err := r.client.GetBlockByNumber(jsonrpc.BlockNumber(receipt.BlockNumber), true)
-		if err != nil {
-			foundErrors = append(foundErrors, err)
+			blockInfoMap[receipt.BlockNumber] = &BlockInfo{
+				Number:         receipt.BlockNumber,
+				CreatedAt:      block.Header.Timestamp,
+				NumTxs:         len(block.Transactions),
+				GasUsed:        new(big.Int).SetUint64(block.Header.GasUsed),
+				GasLimit:       new(big.Int).SetUint64(block.Header.GasLimit),
+				GasUtilization: gu,
+			}
 
-			continue
-		}
-
-		gasUsed := new(big.Int).SetUint64(block.Header.GasUsed)
-		gasLimit := new(big.Int).SetUint64(block.Header.GasLimit)
-		gasUtilization := new(big.Int).Mul(gasUsed, big.NewInt(10000))
-		gasUtilization = gasUtilization.Div(gasUtilization, gasLimit).Div(gasUtilization, big.NewInt(100))
-
-		gu, _ := gasUtilization.Float64()
-
-		blockInfoMap[receipt.BlockNumber] = &BlockInfo{
-			Number:         receipt.BlockNumber,
-			CreatedAt:      block.Header.Timestamp,
-			NumTxs:         len(block.Transactions),
-			GasUsed:        new(big.Int).SetUint64(block.Header.GasUsed),
-			GasLimit:       new(big.Int).SetUint64(block.Header.GasLimit),
-			GasUtilization: gu,
-		}
-
-		for _, txn := range block.Transactions {
-			txToBlockMap[txn.Hash()] = receipt.BlockNumber
+			for _, txn := range block.Transactions {
+				txToBlockMap[txn.Hash()] = receipt.BlockNumber
+			}
 		}
 	}
+
+	totalTxns := len(txHashes)
+
+	// split the txHashes into batches so we can get them in parallel routines
+	batchSize := totalTxns / 10
+	if batchSize == 0 {
+		batchSize = 1
+	}
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < totalTxns; i += batchSize {
+		end := i + batchSize
+		if end > totalTxns {
+			end = totalTxns
+		}
+
+		wg.Add(1)
+
+		go func(txHashes []types.Hash) {
+			defer wg.Done()
+
+			getTxReceipts(txHashes)
+		}(txHashes[i:end])
+	}
+
+	wg.Wait()
 
 	if len(foundErrors) > 0 {
 		fmt.Println("Errors found while waiting for receipts:")
