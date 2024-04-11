@@ -405,6 +405,7 @@ func (r *BaseLoadTestRunner) calculateTPS(blockInfos map[uint64]*BlockInfo, txnS
 	}
 
 	infos := make([]*BlockInfo, 0, len(blockInfos))
+
 	for _, info := range blockInfos {
 		info.BlockTime = math.Abs(float64(info.CreatedAt - blockTimeMap[info.Number-1]))
 		info.TPS = float64(info.NumTxs) / info.BlockTime
@@ -426,19 +427,19 @@ func (r *BaseLoadTestRunner) calculateTPS(blockInfos map[uint64]*BlockInfo, txnS
 		)
 	}
 
-	return r.saveResultsToJsonFile(
+	return r.saveResultsToJSONFile(
 		totalTxs, totalTime,
 		maxTxsPerSecond, minTxsPerSecond, avgTxsPerSecond,
 		infos,
 	)
 }
 
-// saveResultsToJsonFile saves the load test results to a JSON file.
+// saveResultsToJSONFile saves the load test results to a JSON file.
 // It takes the total number of transactions (totalTxs), total time taken (totalTime),
 // maximum transactions per second (maxTxsPerSecond), minimum transactions per second (minTxsPerSecond),
 // average transactions per second (avgTxsPerSecond), and a map of block information (blockInfos).
 // It returns an error if there was a problem saving the results to the file.
-func (r *BaseLoadTestRunner) saveResultsToJsonFile(
+func (r *BaseLoadTestRunner) saveResultsToJSONFile(
 	totalTxs int, totalTime float64,
 	maxTxsPerSecond float64, minTxsPerSecond float64, avgTxsPerSecond float64,
 	blockInfos []*BlockInfo) error {
@@ -469,7 +470,7 @@ func (r *BaseLoadTestRunner) saveResultsToJsonFile(
 
 	fileName := fmt.Sprintf("./%s_%s.json", r.cfg.LoadTestName, r.cfg.LoadTestType)
 
-	err = os.WriteFile(fileName, jsonData, 0644)
+	err = os.WriteFile(fileName, jsonData, 0600)
 	if err != nil {
 		return err
 	}
