@@ -434,6 +434,35 @@ func (p *genesisParams) deployContracts(rewardTokenByteCode []byte,
 			artifact: contractsapi.ChildTimelock,
 			address:  contracts.ChildTimelockContractV1,
 		},
+		// Apex contracts
+		{
+			artifact: contractsapi.BridgeContract,
+			address:  contracts.BridgeContractAddr,
+		},
+		{
+			artifact: contractsapi.ClaimsHelper,
+			address:  contracts.ClaimsHelperAddr,
+		},
+		{
+			artifact: contractsapi.ClaimsManager,
+			address:  contracts.ClaimsManagerAddr,
+		},
+		{
+			artifact: contractsapi.SignedBatchManager,
+			address:  contracts.SignedBatchManagerAddr,
+		},
+		{
+			artifact: contractsapi.SlotsManager,
+			address:  contracts.SlotsManagerAddr,
+		},
+		{
+			artifact: contractsapi.UTXOsManager,
+			address:  contracts.UTXOsManagerAddr,
+		},
+		{
+			artifact: contractsapi.ValidatorsContract,
+			address:  contracts.ValidatorsContractAddr,
+		},
 	}
 
 	if !params.nativeTokenConfig.IsMintable {
