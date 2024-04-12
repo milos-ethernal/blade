@@ -126,7 +126,6 @@ func (r *BaseLoadTestRunner) fundVUs() error {
 
 	txRelayer, err := txrelayer.NewTxRelayer(
 		txrelayer.WithClient(r.client),
-		txrelayer.WithReceiptsTimeout(r.cfg.ReceiptsTimeout),
 		txrelayer.WithoutNonceGet(),
 	)
 	if err != nil {

@@ -100,10 +100,7 @@ func (e *ERC721Runner) deployERC21Token() error {
 		types.WithFrom(e.loadTestAccount.key.Address()),
 	))
 
-	txRelayer, err := txrelayer.NewTxRelayer(
-		txrelayer.WithClient(e.client),
-		txrelayer.WithReceiptsTimeout(e.cfg.ReceiptsTimeout),
-	)
+	txRelayer, err := txrelayer.NewTxRelayer(txrelayer.WithClient(e.client))
 	if err != nil {
 		return err
 	}

@@ -107,10 +107,7 @@ func (e *ERC20Runner) deployERC20Token() error {
 		types.WithFrom(e.loadTestAccount.key.Address()),
 	))
 
-	txRelayer, err := txrelayer.NewTxRelayer(
-		txrelayer.WithClient(e.client),
-		txrelayer.WithReceiptsTimeout(e.cfg.ReceiptsTimeout),
-	)
+	txRelayer, err := txrelayer.NewTxRelayer(txrelayer.WithClient(e.client))
 	if err != nil {
 		return err
 	}
@@ -150,7 +147,6 @@ func (e *ERC20Runner) mintERC20TokenToVUs() error {
 
 	txRelayer, err := txrelayer.NewTxRelayer(
 		txrelayer.WithClient(e.client),
-		txrelayer.WithReceiptsTimeout(e.cfg.ReceiptsTimeout),
 		txrelayer.WithoutNonceGet(),
 	)
 	if err != nil {
