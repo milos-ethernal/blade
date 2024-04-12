@@ -74,6 +74,15 @@ var (
 	Wrapper                *contracts.Artifact
 	NumberPersister        *contracts.Artifact
 
+	// Apex smart contracts
+	BridgeContract     *contracts.Artifact
+	ClaimsHelper       *contracts.Artifact
+	ClaimsManager      *contracts.Artifact
+	SignedBatchManager *contracts.Artifact
+	SlotsManager       *contracts.Artifact
+	UTXOsManager       *contracts.Artifact
+	ValidatorsContract *contracts.Artifact
+
 	contractArtifacts map[string]*contracts.Artifact
 )
 
@@ -330,6 +339,41 @@ func init() {
 		log.Fatal(err)
 	}
 
+	BridgeContract, err = contracts.DecodeArtifact([]byte(BridgeContractArtifact))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ClaimsHelper, err = contracts.DecodeArtifact([]byte(ClaimsHelperArtifact))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ClaimsManager, err = contracts.DecodeArtifact([]byte(ClaimsManagerArtifact))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	SignedBatchManager, err = contracts.DecodeArtifact([]byte(SignedBatchManagerArtifact))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	SlotsManager, err = contracts.DecodeArtifact([]byte(SlotsManagerArtifact))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	UTXOsManager, err = contracts.DecodeArtifact([]byte(UTXOsManagerArtifact))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ValidatorsContract, err = contracts.DecodeArtifact([]byte(ValidatorsContractArtifact))
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	contractArtifacts = map[string]*contracts.Artifact{
 		"CheckpointManager":               CheckpointManager,
 		"ExitHelper":                      ExitHelper,
@@ -381,6 +425,13 @@ func init() {
 		"RootERC20":                       RootERC20,
 		"TestSimple":                      TestSimple,
 		"TestRewardToken":                 TestRewardToken,
+		"BridgeContract":                  BridgeContract,
+		"ClaimsHelper":                    ClaimsHelper,
+		"ClaimsManager":                   ClaimsManager,
+		"SignedBatchManager":              SignedBatchManager,
+		"SlotsManager":                    SlotsManager,
+		"UTXOsManager":                    UTXOsManager,
+		"ValidatorsContract":              ValidatorsContract,
 	}
 }
 

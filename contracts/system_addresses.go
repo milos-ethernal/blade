@@ -111,6 +111,14 @@ var (
 	AllowListBridgeAddr = types.StringToAddress("0x0200000000000000000000000000000000000004")
 	// BlockListBridgeAddr is the address of the bridge block list
 	BlockListBridgeAddr = types.StringToAddress("0x0300000000000000000000000000000000000004")
+
+	BridgeContractAddr     = types.StringToAddress("0x0400000000000000000000000000000000000000")
+	ClaimsHelperAddr       = types.StringToAddress("0x0400000000000000000000000000000000000001")
+	ClaimsManagerAddr      = types.StringToAddress("0x0400000000000000000000000000000000000002")
+	SignedBatchManagerAddr = types.StringToAddress("0x0400000000000000000000000000000000000003")
+	SlotsManagerAddr       = types.StringToAddress("0x0400000000000000000000000000000000000004")
+	UTXOsManagerAddr       = types.StringToAddress("0x0400000000000000000000000000000000000005")
+	ValidatorsContractAddr = types.StringToAddress("0x0400000000000000000000000000000000000006")
 )
 
 // GetProxyImplementationMapping retrieves the addresses of proxy contracts that should be deployed unconditionally

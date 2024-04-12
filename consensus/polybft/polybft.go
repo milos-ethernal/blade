@@ -430,6 +430,36 @@ func GenesisPostHookFactory(config *chain.Chain, engineName string) func(txn *st
 			}
 		}
 
+		// Initialize Apex contracts
+
+		if err = initBridgeContract(transition); err != nil {
+			return err
+		}
+
+		if err = initSignedBatchManager(transition); err != nil {
+			return err
+		}
+
+		if err = initClaimsHelper(transition); err != nil {
+			return err
+		}
+
+		if err = initValidatorsContract(polyBFTConfig, transition); err != nil {
+			return err
+		}
+
+		if err = initSlotsManager(transition); err != nil {
+			return err
+		}
+
+		if err = initClaimsManager(transition); err != nil {
+			return err
+		}
+
+		if err = initUTXOsManager(transition); err != nil {
+			return err
+		}
+
 		return nil
 	}
 }

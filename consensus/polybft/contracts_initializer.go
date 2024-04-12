@@ -435,3 +435,121 @@ func isNativeRewardToken(cfg PolyBFTConfig) bool {
 func IsNativeStakeToken(stakeTokenAddr types.Address) bool {
 	return stakeTokenAddr == contracts.NativeERC20TokenContract
 }
+
+// Apex smart contracts initialization
+// initBridgeContract initializes BridgeContract SC
+func initBridgeContract(transition *state.Transition) error {
+	initFn := &contractsapi.InitializeBridgeContractFn{
+		MaxNumberOfTransactions: 0, // APEX-TODO: Define
+		TimeoutBlocksNumber:     0, // APEX-TODO: Define
+	}
+
+	input, err := initFn.EncodeAbi()
+	if err != nil {
+		return fmt.Errorf("BridgeContract.initialize params encoding failed: %w", err)
+	}
+
+	return callContract(contracts.SystemCaller,
+		contracts.EpochManagerContract, input, "BridgeContract.initialize", transition)
+}
+
+// initSignedBatchManager initializes SignedBatchManager SC
+func initSignedBatchManager(transition *state.Transition) error {
+	initFn := &contractsapi.InitializeSignedBatchManagerFn{
+		BridgeContract: contracts.BridgeContractAddr,
+	}
+
+	input, err := initFn.EncodeAbi()
+	if err != nil {
+		return fmt.Errorf("SignedBatchManager.initialize params encoding failed: %w", err)
+	}
+
+	return callContract(contracts.SystemCaller,
+		contracts.EpochManagerContract, input, "SignedBatchManager.initialize", transition)
+}
+
+// initClaimsHelper initializes ClaimsHelper SC
+func initClaimsHelper(transition *state.Transition) error {
+	initFn := &contractsapi.InitializeClaimsHelperFn{
+		SignedBatchManager: contracts.SignedBatchManagerAddr,
+	}
+
+	input, err := initFn.EncodeAbi()
+	if err != nil {
+		return fmt.Errorf("ClaimsHelper.initialize params encoding failed: %w", err)
+	}
+
+	return callContract(contracts.SystemCaller,
+		contracts.EpochManagerContract, input, "ClaimsHelper.initialize", transition)
+}
+
+// initValidatorsContract initializes ValidatorsContract SC
+func initValidatorsContract(polyBFTConfig PolyBFTConfig, transition *state.Transition) error {
+	var validatorAddresses []types.Address = make([]types.Address, len(polyBFTConfig.InitialValidatorSet))
+	for i, validator := range polyBFTConfig.InitialValidatorSet {
+		validatorAddresses[i] = validator.Address
+	}
+
+	initFn := &contractsapi.InitializeValidatorsContractFn{
+		Validators:            validatorAddresses,
+		BridgeContractAddress: contracts.BridgeContractAddr,
+	}
+
+	input, err := initFn.EncodeAbi()
+	if err != nil {
+		return fmt.Errorf("ValidatorsContract.initialize params encoding failed: %w", err)
+	}
+
+	return callContract(contracts.SystemCaller,
+		contracts.EpochManagerContract, input, "ValidatorsContract.initialize", transition)
+}
+
+// initSlotsManager initializes SlotsManager SC
+func initSlotsManager(transition *state.Transition) error {
+	initFn := &contractsapi.InitializeSlotsManagerFn{
+		BridgeContractAddress: contracts.BridgeContractAddr,
+		ValidatorsContract:    contracts.ValidatorsContractAddr,
+	}
+
+	input, err := initFn.EncodeAbi()
+	if err != nil {
+		return fmt.Errorf("SlotsManager.initialize params encoding failed: %w", err)
+	}
+
+	return callContract(contracts.SystemCaller,
+		contracts.EpochManagerContract, input, "SlotsManager.initialize", transition)
+}
+
+// initClaimsManager initializes ClaimsManager SC
+func initClaimsManager(transition *state.Transition) error {
+	initFn := &contractsapi.InitializeClaimsManagerFn{
+		BridgeContract:     contracts.BridgeContractAddr,
+		ClaimsHelper:       contracts.ClaimsHelperAddr,
+		ValidatorsContract: contracts.ValidatorsContractAddr,
+		SignedBatchManager: contracts.SignedBatchManagerAddr,
+	}
+
+	input, err := initFn.EncodeAbi()
+	if err != nil {
+		return fmt.Errorf("ClaimsManager.initialize params encoding failed: %w", err)
+	}
+
+	return callContract(contracts.SystemCaller,
+		contracts.EpochManagerContract, input, "ClaimsManager.initialize", transition)
+}
+
+// initUTXOsManager initializes UTXOsManager SC
+func initUTXOsManager(transition *state.Transition) error {
+	initFn := &contractsapi.InitializeUTXOsManagerFn{
+		BridgeContractAddress: contracts.BridgeContractAddr,
+		ClaimsManagerAddress:  contracts.ClaimsManagerAddr,
+	}
+
+	input, err := initFn.EncodeAbi()
+	if err != nil {
+		return fmt.Errorf("UTXOsManager.initialize params encoding failed: %w", err)
+	}
+
+	return callContract(contracts.SystemCaller,
+		contracts.EpochManagerContract, input, "UTXOsManager.initialize", transition)
+}
