@@ -440,8 +440,8 @@ func IsNativeStakeToken(stakeTokenAddr types.Address) bool {
 // initBridgeContract initializes BridgeContract SC
 func initBridgeContract(transition *state.Transition) error {
 	initFn := &contractsapi.InitializeBridgeContractFn{
-		MaxNumberOfTransactions: 0, // APEX-TODO: Define
-		TimeoutBlocksNumber:     0, // APEX-TODO: Define
+		MaxNumberOfTransactions: 10, // APEX-TODO: Define
+		TimeoutBlocksNumber:     5,  // APEX-TODO: Define
 	}
 
 	input, err := initFn.EncodeAbi()
@@ -450,7 +450,7 @@ func initBridgeContract(transition *state.Transition) error {
 	}
 
 	return callContract(contracts.SystemCaller,
-		contracts.EpochManagerContract, input, "BridgeContract.initialize", transition)
+		contracts.BridgeContractAddr, input, "BridgeContract.initialize", transition)
 }
 
 // initSignedBatchManager initializes SignedBatchManager SC
@@ -465,13 +465,13 @@ func initSignedBatchManager(transition *state.Transition) error {
 	}
 
 	return callContract(contracts.SystemCaller,
-		contracts.EpochManagerContract, input, "SignedBatchManager.initialize", transition)
+		contracts.SignedBatchManagerAddr, input, "SignedBatchManager.initialize", transition)
 }
 
 // initClaimsHelper initializes ClaimsHelper SC
 func initClaimsHelper(transition *state.Transition) error {
 	initFn := &contractsapi.InitializeClaimsHelperFn{
-		SignedBatchManager: contracts.SignedBatchManagerAddr,
+		SignedBatchManagerAddress: contracts.SignedBatchManagerAddr,
 	}
 
 	input, err := initFn.EncodeAbi()
@@ -480,7 +480,7 @@ func initClaimsHelper(transition *state.Transition) error {
 	}
 
 	return callContract(contracts.SystemCaller,
-		contracts.EpochManagerContract, input, "ClaimsHelper.initialize", transition)
+		contracts.ClaimsHelperAddr, input, "ClaimsHelper.initialize", transition)
 }
 
 // initValidatorsContract initializes ValidatorsContract SC
@@ -501,7 +501,7 @@ func initValidatorsContract(polyBFTConfig PolyBFTConfig, transition *state.Trans
 	}
 
 	return callContract(contracts.SystemCaller,
-		contracts.EpochManagerContract, input, "ValidatorsContract.initialize", transition)
+		contracts.ValidatorsContractAddr, input, "ValidatorsContract.initialize", transition)
 }
 
 // initSlotsManager initializes SlotsManager SC
@@ -517,16 +517,16 @@ func initSlotsManager(transition *state.Transition) error {
 	}
 
 	return callContract(contracts.SystemCaller,
-		contracts.EpochManagerContract, input, "SlotsManager.initialize", transition)
+		contracts.SlotsManagerAddr, input, "SlotsManager.initialize", transition)
 }
 
 // initClaimsManager initializes ClaimsManager SC
 func initClaimsManager(transition *state.Transition) error {
 	initFn := &contractsapi.InitializeClaimsManagerFn{
-		BridgeContract:     contracts.BridgeContractAddr,
-		ClaimsHelper:       contracts.ClaimsHelperAddr,
-		ValidatorsContract: contracts.ValidatorsContractAddr,
-		SignedBatchManager: contracts.SignedBatchManagerAddr,
+		BridgeContract:            contracts.BridgeContractAddr,
+		ClaimsHelper:              contracts.ClaimsHelperAddr,
+		ValidatorsContract:        contracts.ValidatorsContractAddr,
+		SignedBatchManagerAddress: contracts.SignedBatchManagerAddr,
 	}
 
 	input, err := initFn.EncodeAbi()
@@ -535,7 +535,7 @@ func initClaimsManager(transition *state.Transition) error {
 	}
 
 	return callContract(contracts.SystemCaller,
-		contracts.EpochManagerContract, input, "ClaimsManager.initialize", transition)
+		contracts.ClaimsManagerAddr, input, "ClaimsManager.initialize", transition)
 }
 
 // initUTXOsManager initializes UTXOsManager SC
@@ -551,5 +551,5 @@ func initUTXOsManager(transition *state.Transition) error {
 	}
 
 	return callContract(contracts.SystemCaller,
-		contracts.EpochManagerContract, input, "UTXOsManager.initialize", transition)
+		contracts.UTXOsManagerAddr, input, "UTXOsManager.initialize", transition)
 }

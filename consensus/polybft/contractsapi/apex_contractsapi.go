@@ -23,7 +23,7 @@ func (i *InitializeBridgeContractFn) DecodeAbi(buf []byte) error {
 }
 
 type InitializeClaimsHelperFn struct {
-	SignedBatchManager types.Address `abi:"_signedBatchManager"`
+	SignedBatchManagerAddress types.Address `abi:"_signedBatchManagerAddress"`
 }
 
 func (i *InitializeClaimsHelperFn) Sig() []byte {
@@ -39,10 +39,10 @@ func (i *InitializeClaimsHelperFn) DecodeAbi(buf []byte) error {
 }
 
 type InitializeClaimsManagerFn struct {
-	BridgeContract     types.Address `abi:"_bridgeContract"`
-	ClaimsHelper       types.Address `abi:"_claimsHelper"`
-	ValidatorsContract types.Address `abi:"_validatorsContract"`
-	SignedBatchManager types.Address `abi:"_signedBatchManager"`
+	BridgeContract            types.Address `abi:"_bridgeContract"`
+	ClaimsHelper              types.Address `abi:"_claimsHelper"`
+	ValidatorsContract        types.Address `abi:"_validatorsContract"`
+	SignedBatchManagerAddress types.Address `abi:"_signedBatchManagerAddress"`
 }
 
 func (i *InitializeClaimsManagerFn) Sig() []byte {

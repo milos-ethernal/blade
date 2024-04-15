@@ -339,6 +339,7 @@ func init() {
 		log.Fatal(err)
 	}
 
+	// Apex contracts
 	BridgeContract, err = contracts.DecodeArtifact([]byte(BridgeContractArtifact))
 	if err != nil {
 		log.Fatal(err)

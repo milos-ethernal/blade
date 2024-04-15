@@ -201,6 +201,36 @@ func GenesisPostHookFactory(config *chain.Chain, engineName string) func(txn *st
 			return err
 		}
 
+		// Initialize Apex contracts
+
+		if err = initBridgeContract(transition); err != nil {
+			return err
+		}
+
+		if err = initSignedBatchManager(transition); err != nil {
+			return err
+		}
+
+		if err = initClaimsHelper(transition); err != nil {
+			return err
+		}
+
+		if err = initValidatorsContract(polyBFTConfig, transition); err != nil {
+			return err
+		}
+
+		if err = initSlotsManager(transition); err != nil {
+			return err
+		}
+
+		if err = initClaimsManager(transition); err != nil {
+			return err
+		}
+
+		if err = initUTXOsManager(transition); err != nil {
+			return err
+		}
+
 		bridgeCfg := polyBFTConfig.Bridge
 		if bridgeCfg != nil {
 			// check if there are Bridge Allow List Admins and Bridge Block List Admins
@@ -428,36 +458,6 @@ func GenesisPostHookFactory(config *chain.Chain, engineName string) func(txn *st
 					return err
 				}
 			}
-		}
-
-		// Initialize Apex contracts
-
-		if err = initBridgeContract(transition); err != nil {
-			return err
-		}
-
-		if err = initSignedBatchManager(transition); err != nil {
-			return err
-		}
-
-		if err = initClaimsHelper(transition); err != nil {
-			return err
-		}
-
-		if err = initValidatorsContract(polyBFTConfig, transition); err != nil {
-			return err
-		}
-
-		if err = initSlotsManager(transition); err != nil {
-			return err
-		}
-
-		if err = initClaimsManager(transition); err != nil {
-			return err
-		}
-
-		if err = initUTXOsManager(transition); err != nil {
-			return err
 		}
 
 		return nil
