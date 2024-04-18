@@ -82,6 +82,7 @@ var (
 	SlotsManager       *contracts.Artifact
 	UTXOsManager       *contracts.Artifact
 	ValidatorsContract *contracts.Artifact
+	ApexProxy          *contracts.Artifact
 
 	contractArtifacts map[string]*contracts.Artifact
 )
@@ -375,6 +376,11 @@ func init() {
 		log.Fatal(err)
 	}
 
+	ApexProxy, err = contracts.DecodeArtifact([]byte(ApexProxyArtifact))
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	contractArtifacts = map[string]*contracts.Artifact{
 		"CheckpointManager":               CheckpointManager,
 		"ExitHelper":                      ExitHelper,
@@ -433,6 +439,7 @@ func init() {
 		"SlotsManager":                    SlotsManager,
 		"UTXOsManager":                    UTXOsManager,
 		"ValidatorsContract":              ValidatorsContract,
+		"ApexProxy":                       ApexProxy,
 	}
 }
 

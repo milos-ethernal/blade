@@ -570,6 +570,7 @@ import (
 			false,
 			[]string{
 				"initialize",
+				"setDependencies",
 			},
 			[]string{},
 		},
@@ -579,6 +580,7 @@ import (
 			false,
 			[]string{
 				"initialize",
+				"setDependencies",
 			},
 			[]string{},
 		},
@@ -588,6 +590,7 @@ import (
 			false,
 			[]string{
 				"initialize",
+				"setDependencies",
 			},
 			[]string{},
 		},
@@ -597,6 +600,7 @@ import (
 			false,
 			[]string{
 				"initialize",
+				"setDependencies",
 			},
 			[]string{},
 		},
@@ -606,6 +610,7 @@ import (
 			false,
 			[]string{
 				"initialize",
+				"setDependencies",
 			},
 			[]string{},
 		},
@@ -615,6 +620,7 @@ import (
 			false,
 			[]string{
 				"initialize",
+				"setDependencies",
 			},
 			[]string{},
 		},
@@ -624,7 +630,15 @@ import (
 			false,
 			[]string{
 				"initialize",
+				"setDependencies",
 			},
+			[]string{},
+		},
+		{
+			"ApexProxy",
+			gensc.ApexProxy,
+			true,
+			[]string{},
 			[]string{},
 		},
 	}

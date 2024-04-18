@@ -6,8 +6,6 @@ import (
 )
 
 type InitializeBridgeContractFn struct {
-	MaxNumberOfTransactions uint16 `abi:"_maxNumberOfTransactions"`
-	TimeoutBlocksNumber     uint8  `abi:"_timeoutBlocksNumber"`
 }
 
 func (i *InitializeBridgeContractFn) Sig() []byte {
@@ -22,8 +20,27 @@ func (i *InitializeBridgeContractFn) DecodeAbi(buf []byte) error {
 	return decodeMethod(BridgeContract.Abi.Methods["initialize"], buf, i)
 }
 
-type InitializeClaimsHelperFn struct {
+type SetDependenciesBridgeContractFn struct {
+	ClaimsManagerAddress      types.Address `abi:"_claimsManagerAddress"`
 	SignedBatchManagerAddress types.Address `abi:"_signedBatchManagerAddress"`
+	SlotsManagerAddress       types.Address `abi:"_slotsManagerAddress"`
+	UtxosManagerAddress       types.Address `abi:"_utxosManagerAddress"`
+	ValidatorsContractAddress types.Address `abi:"_validatorsContractAddress"`
+}
+
+func (s *SetDependenciesBridgeContractFn) Sig() []byte {
+	return BridgeContract.Abi.Methods["setDependencies"].ID()
+}
+
+func (s *SetDependenciesBridgeContractFn) EncodeAbi() ([]byte, error) {
+	return BridgeContract.Abi.Methods["setDependencies"].Encode(s)
+}
+
+func (s *SetDependenciesBridgeContractFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(BridgeContract.Abi.Methods["setDependencies"], buf, s)
+}
+
+type InitializeClaimsHelperFn struct {
 }
 
 func (i *InitializeClaimsHelperFn) Sig() []byte {
@@ -38,11 +55,24 @@ func (i *InitializeClaimsHelperFn) DecodeAbi(buf []byte) error {
 	return decodeMethod(ClaimsHelper.Abi.Methods["initialize"], buf, i)
 }
 
-type InitializeClaimsManagerFn struct {
-	BridgeContract            types.Address `abi:"_bridgeContract"`
-	ClaimsHelper              types.Address `abi:"_claimsHelper"`
-	ValidatorsContract        types.Address `abi:"_validatorsContract"`
+type SetDependenciesClaimsHelperFn struct {
+	ClaimsManagerAddress      types.Address `abi:"_claimsManagerAddress"`
 	SignedBatchManagerAddress types.Address `abi:"_signedBatchManagerAddress"`
+}
+
+func (s *SetDependenciesClaimsHelperFn) Sig() []byte {
+	return ClaimsHelper.Abi.Methods["setDependencies"].ID()
+}
+
+func (s *SetDependenciesClaimsHelperFn) EncodeAbi() ([]byte, error) {
+	return ClaimsHelper.Abi.Methods["setDependencies"].Encode(s)
+}
+
+func (s *SetDependenciesClaimsHelperFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(ClaimsHelper.Abi.Methods["setDependencies"], buf, s)
+}
+
+type InitializeClaimsManagerFn struct {
 }
 
 func (i *InitializeClaimsManagerFn) Sig() []byte {
@@ -57,8 +87,28 @@ func (i *InitializeClaimsManagerFn) DecodeAbi(buf []byte) error {
 	return decodeMethod(ClaimsManager.Abi.Methods["initialize"], buf, i)
 }
 
+type SetDependenciesClaimsManagerFn struct {
+	BridgeContractAddress     types.Address `abi:"_bridgeContractAddress"`
+	ClaimsHelperAddress       types.Address `abi:"_claimsHelperAddress"`
+	UtxosManager              types.Address `abi:"_utxosManager"`
+	ValidatorsContractAddress types.Address `abi:"_validatorsContractAddress"`
+	MaxNumberOfTransactions   uint16        `abi:"_maxNumberOfTransactions"`
+	TimeoutBlocksNumber       uint8         `abi:"_timeoutBlocksNumber"`
+}
+
+func (s *SetDependenciesClaimsManagerFn) Sig() []byte {
+	return ClaimsManager.Abi.Methods["setDependencies"].ID()
+}
+
+func (s *SetDependenciesClaimsManagerFn) EncodeAbi() ([]byte, error) {
+	return ClaimsManager.Abi.Methods["setDependencies"].Encode(s)
+}
+
+func (s *SetDependenciesClaimsManagerFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(ClaimsManager.Abi.Methods["setDependencies"], buf, s)
+}
+
 type InitializeSignedBatchManagerFn struct {
-	BridgeContract types.Address `abi:"_bridgeContract"`
 }
 
 func (i *InitializeSignedBatchManagerFn) Sig() []byte {
@@ -73,9 +123,25 @@ func (i *InitializeSignedBatchManagerFn) DecodeAbi(buf []byte) error {
 	return decodeMethod(SignedBatchManager.Abi.Methods["initialize"], buf, i)
 }
 
+type SetDependenciesSignedBatchManagerFn struct {
+	BridgeContractAddress     types.Address `abi:"_bridgeContractAddress"`
+	ClaimsHelperAddress       types.Address `abi:"_claimsHelperAddress"`
+	ValidatorsContractAddress types.Address `abi:"_validatorsContractAddress"`
+}
+
+func (s *SetDependenciesSignedBatchManagerFn) Sig() []byte {
+	return SignedBatchManager.Abi.Methods["setDependencies"].ID()
+}
+
+func (s *SetDependenciesSignedBatchManagerFn) EncodeAbi() ([]byte, error) {
+	return SignedBatchManager.Abi.Methods["setDependencies"].Encode(s)
+}
+
+func (s *SetDependenciesSignedBatchManagerFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(SignedBatchManager.Abi.Methods["setDependencies"], buf, s)
+}
+
 type InitializeSlotsManagerFn struct {
-	BridgeContractAddress types.Address `abi:"_bridgeContractAddress"`
-	ValidatorsContract    types.Address `abi:"_validatorsContract"`
 }
 
 func (i *InitializeSlotsManagerFn) Sig() []byte {
@@ -90,9 +156,24 @@ func (i *InitializeSlotsManagerFn) DecodeAbi(buf []byte) error {
 	return decodeMethod(SlotsManager.Abi.Methods["initialize"], buf, i)
 }
 
+type SetDependenciesSlotsManagerFn struct {
+	BridgeContractAddress     types.Address `abi:"_bridgeContractAddress"`
+	ValidatorsContractAddress types.Address `abi:"_validatorsContractAddress"`
+}
+
+func (s *SetDependenciesSlotsManagerFn) Sig() []byte {
+	return SlotsManager.Abi.Methods["setDependencies"].ID()
+}
+
+func (s *SetDependenciesSlotsManagerFn) EncodeAbi() ([]byte, error) {
+	return SlotsManager.Abi.Methods["setDependencies"].Encode(s)
+}
+
+func (s *SetDependenciesSlotsManagerFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(SlotsManager.Abi.Methods["setDependencies"], buf, s)
+}
+
 type InitializeUTXOsManagerFn struct {
-	BridgeContractAddress types.Address `abi:"_bridgeContractAddress"`
-	ClaimsManagerAddress  types.Address `abi:"_claimsManagerAddress"`
 }
 
 func (i *InitializeUTXOsManagerFn) Sig() []byte {
@@ -107,9 +188,25 @@ func (i *InitializeUTXOsManagerFn) DecodeAbi(buf []byte) error {
 	return decodeMethod(UTXOsManager.Abi.Methods["initialize"], buf, i)
 }
 
+type SetDependenciesUTXOsManagerFn struct {
+	BridgeContractAddress types.Address `abi:"_bridgeContractAddress"`
+	ClaimsManagerAddress  types.Address `abi:"_claimsManagerAddress"`
+}
+
+func (s *SetDependenciesUTXOsManagerFn) Sig() []byte {
+	return UTXOsManager.Abi.Methods["setDependencies"].ID()
+}
+
+func (s *SetDependenciesUTXOsManagerFn) EncodeAbi() ([]byte, error) {
+	return UTXOsManager.Abi.Methods["setDependencies"].Encode(s)
+}
+
+func (s *SetDependenciesUTXOsManagerFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(UTXOsManager.Abi.Methods["setDependencies"], buf, s)
+}
+
 type InitializeValidatorsContractFn struct {
-	Validators            []types.Address `abi:"_validators"`
-	BridgeContractAddress types.Address   `abi:"_bridgeContractAddress"`
+	Validators []types.Address `abi:"_validators"`
 }
 
 func (i *InitializeValidatorsContractFn) Sig() []byte {
@@ -122,4 +219,37 @@ func (i *InitializeValidatorsContractFn) EncodeAbi() ([]byte, error) {
 
 func (i *InitializeValidatorsContractFn) DecodeAbi(buf []byte) error {
 	return decodeMethod(ValidatorsContract.Abi.Methods["initialize"], buf, i)
+}
+
+type SetDependenciesValidatorsContractFn struct {
+	BridgeContractAddress types.Address `abi:"_bridgeContractAddress"`
+}
+
+func (s *SetDependenciesValidatorsContractFn) Sig() []byte {
+	return ValidatorsContract.Abi.Methods["setDependencies"].ID()
+}
+
+func (s *SetDependenciesValidatorsContractFn) EncodeAbi() ([]byte, error) {
+	return ValidatorsContract.Abi.Methods["setDependencies"].Encode(s)
+}
+
+func (s *SetDependenciesValidatorsContractFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(ValidatorsContract.Abi.Methods["setDependencies"], buf, s)
+}
+
+type ApexProxyConstructorFn struct {
+	Implementation types.Address `abi:"implementation"`
+	Data           []byte        `abi:"_data"`
+}
+
+func (a *ApexProxyConstructorFn) Sig() []byte {
+	return ApexProxy.Abi.Constructor.ID()
+}
+
+func (a *ApexProxyConstructorFn) EncodeAbi() ([]byte, error) {
+	return ApexProxy.Abi.Constructor.Inputs.Encode(a)
+}
+
+func (a *ApexProxyConstructorFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(ApexProxy.Abi.Constructor, buf, a)
 }

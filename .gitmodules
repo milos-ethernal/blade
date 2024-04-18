@@ -11,4 +11,7 @@
 [submodule "apex-bridge-smartcontracts"]
 	path = apex-bridge-smartcontracts
 	url = https://github.com/Ethernal-Tech/apex-bridge-smartcontracts.git
-	branch = blade-deployment
+[submodule "openzeppelin-contracts"]
+	path = openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts.git
+	branch = release-v5.0
