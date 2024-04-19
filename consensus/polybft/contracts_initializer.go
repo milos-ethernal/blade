@@ -436,42 +436,79 @@ func IsNativeStakeToken(stakeTokenAddr types.Address) bool {
 	return stakeTokenAddr == contracts.NativeERC20TokenContract
 }
 
+// initProxies initializes proxy contracts, that allow upgradeability of contracts implementation
+func initApexProxies(transition *state.Transition, admin types.Address,
+	proxyToImplMap map[types.Address]types.Address, polyBFTConfig PolyBFTConfig) error {
+	for proxyAddress, implAddress := range proxyToImplMap {
+		protectSetupProxyFn := &contractsapi.ProtectSetUpProxyGenesisProxyFn{Initiator: contracts.SystemCaller}
+
+		proxyInput, err := protectSetupProxyFn.EncodeAbi()
+		if err != nil {
+			return fmt.Errorf("GenesisProxy.protectSetUpProxy params encoding failed: %w", err)
+		}
+
+		err = callContract(contracts.SystemCaller, proxyAddress, proxyInput, "GenesisProxy.protectSetUpProxy", transition)
+		if err != nil {
+			return err
+		}
+
+		data, err := getDataForApexContract(proxyAddress, polyBFTConfig)
+		if err != nil {
+			return fmt.Errorf("initialize encoding for %v proxy failed: %w", proxyAddress, err)
+		}
+
+		setUpproxyFn := &contractsapi.SetUpProxyGenesisProxyFn{
+			Logic: implAddress,
+			Admin: admin,
+			Data:  data,
+		}
+
+		proxyInput, err = setUpproxyFn.EncodeAbi()
+		if err != nil {
+			return fmt.Errorf("Apex GenesisProxy.setUpProxy params encoding failed: %w", err)
+		}
+
+		err = callContract(contracts.SystemCaller, proxyAddress, proxyInput, "GenesisProxy.setUpProxy", transition)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func getDataForApexContract(contract types.Address, polyBFTConfig PolyBFTConfig) ([]byte, error) {
+	switch contract {
+	case contracts.BridgeContract:
+		return (&contractsapi.InitializeBridgeContractFn{}).EncodeAbi()
+	case contracts.SignedBatchManager:
+		return (&contractsapi.InitializeSignedBatchManagerFn{}).EncodeAbi()
+	case contracts.ClaimsHelper:
+		return (&contractsapi.InitializeClaimsHelperFn{}).EncodeAbi()
+	case contracts.ValidatorsContract:
+		var validatorAddresses []types.Address = make([]types.Address, len(polyBFTConfig.InitialValidatorSet))
+		for i, validator := range polyBFTConfig.InitialValidatorSet {
+			validatorAddresses[i] = validator.Address
+		}
+
+		return (&contractsapi.InitializeValidatorsContractFn{
+			Validators: validatorAddresses,
+		}).EncodeAbi()
+	case contracts.SlotsManager:
+		return (&contractsapi.InitializeSlotsManagerFn{}).EncodeAbi()
+	case contracts.ClaimsManager:
+		return (&contractsapi.InitializeClaimsManagerFn{}).EncodeAbi()
+	case contracts.UTXOsManager:
+		return (&contractsapi.InitializeUTXOsManagerFn{}).EncodeAbi()
+	}
+
+	return nil, fmt.Errorf("No contract defined at address %v", contract)
+}
+
 // Apex smart contracts initialization
 
 // initBridgeContract initializes BridgeContract and it's proxy SC
 func initBridgeContract(transition *state.Transition) error {
-	initFn := &contractsapi.InitializeBridgeContractFn{}
-
-	data, err := initFn.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("BridgeContract.initialize encoding for proxy failed: %w", err)
-	}
-
-	constructor := &contractsapi.ApexProxyConstructorFn{
-		Implementation: contracts.BridgeContractAddr,
-		Data:           data,
-	}
-
-	input, err := constructor.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("BridgeContractProxy constructor params encoding failed: %w", err)
-	}
-
-	err = callContract(contracts.SystemCaller, contracts.BridgeContract, input, "ERC1967Proxy.constructor", transition)
-	if err != nil {
-		return err
-	}
-
-	input, err = initFn.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("BridgeContract.initialize encoding for proxy failed: %w", err)
-	}
-
-	err = callContract(contracts.BridgeContract, contracts.BridgeContractAddr, input, "BridgeContract.initialize", transition)
-	if err != nil {
-		return err
-	}
-
 	setDependenciesFn := &contractsapi.SetDependenciesBridgeContractFn{
 		ClaimsManagerAddress:      contracts.ClaimsManager,
 		SignedBatchManagerAddress: contracts.SignedBatchManager,
@@ -480,310 +517,111 @@ func initBridgeContract(transition *state.Transition) error {
 		ValidatorsContractAddress: contracts.ValidatorsContract,
 	}
 
-	input, err = setDependenciesFn.EncodeAbi()
+	input, err := setDependenciesFn.EncodeAbi()
 	if err != nil {
 		return fmt.Errorf("BridgeContract.setDependencies params encoding failed: %w", err)
 	}
 
-	return callContract(contracts.BridgeContract,
-		contracts.BridgeContractAddr, input, "BridgeContract.setDependencies", transition)
+	return callContract(contracts.SystemCaller,
+		contracts.BridgeContract, input, "BridgeContract.setDependencies", transition)
 }
 
 // initSignedBatchManager initializes SignedBatchManager SC
 func initSignedBatchManager(transition *state.Transition) error {
-	initFn := &contractsapi.InitializeSignedBatchManagerFn{}
-
-	data, err := initFn.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("SignedBatchManager.initialize params encoding failed: %w", err)
-	}
-
-	constructor := &contractsapi.ApexProxyConstructorFn{
-		Implementation: contracts.SignedBatchManagerAddr,
-		Data:           data,
-	}
-
-	input, err := constructor.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("SignedBatchManagerProxy constructor params encoding failed: %w", err)
-	}
-
-	err = callContract(contracts.SystemCaller, contracts.SignedBatchManager, input, "ERC1967Proxy.constructor", transition)
-	if err != nil {
-		return err
-	}
-
-	input, err = initFn.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("SignedBatchManager.initialize encoding for proxy failed: %w", err)
-	}
-
-	err = callContract(contracts.SignedBatchManager, contracts.SignedBatchManagerAddr, input, "SignedBatchManager.initialize", transition)
-	if err != nil {
-		return err
-	}
-
 	setDependenciesFn := &contractsapi.SetDependenciesSignedBatchManagerFn{
 		BridgeContractAddress:     contracts.BridgeContract,
 		ClaimsHelperAddress:       contracts.ClaimsHelper,
 		ValidatorsContractAddress: contracts.ValidatorsContract,
 	}
 
-	input, err = setDependenciesFn.EncodeAbi()
+	input, err := setDependenciesFn.EncodeAbi()
 	if err != nil {
 		return fmt.Errorf("SignedBatchManager.setDependencies params encoding failed: %w", err)
 	}
 
-	return callContract(contracts.SignedBatchManager,
-		contracts.SignedBatchManagerAddr, input, "SignedBatchManager.setDependencies", transition)
+	return callContract(contracts.SystemCaller,
+		contracts.SignedBatchManager, input, "SignedBatchManager.setDependencies", transition)
 }
 
 // initClaimsHelper initializes ClaimsHelper SC
 func initClaimsHelper(transition *state.Transition) error {
-	initFn := &contractsapi.InitializeClaimsHelperFn{}
-
-	data, err := initFn.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("ClaimsHelper.initialize params encoding failed: %w", err)
-	}
-
-	constructor := &contractsapi.ApexProxyConstructorFn{
-		Implementation: contracts.ClaimsHelperAddr,
-		Data:           data,
-	}
-
-	input, err := constructor.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("ClaimsHelperProxy constructor params encoding failed: %w", err)
-	}
-
-	err = callContract(contracts.SystemCaller, contracts.ClaimsHelper, input, "ERC1967Proxy.constructor", transition)
-	if err != nil {
-		return err
-	}
-
-	input, err = initFn.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("ClaimsHelper.initialize encoding for proxy failed: %w", err)
-	}
-
-	err = callContract(contracts.ClaimsHelper, contracts.ClaimsHelperAddr, input, "ClaimsHelper.initialize", transition)
-	if err != nil {
-		return err
-	}
-
 	setDependenciesFn := &contractsapi.SetDependenciesClaimsHelperFn{
 		ClaimsManagerAddress:      contracts.ClaimsManager,
 		SignedBatchManagerAddress: contracts.SignedBatchManager,
 	}
 
-	input, err = setDependenciesFn.EncodeAbi()
+	input, err := setDependenciesFn.EncodeAbi()
 	if err != nil {
 		return fmt.Errorf("ClaimsHelper.setDependencies params encoding failed: %w", err)
 	}
 
-	return callContract(contracts.ClaimsHelper,
-		contracts.ClaimsHelperAddr, input, "ClaimsHelper.setDependencies", transition)
+	return callContract(contracts.SystemCaller,
+		contracts.ClaimsHelper, input, "ClaimsHelper.setDependencies", transition)
 }
 
 // initValidatorsContract initializes ValidatorsContract SC
-func initValidatorsContract(polyBFTConfig PolyBFTConfig, transition *state.Transition) error {
-	var validatorAddresses []types.Address = make([]types.Address, len(polyBFTConfig.InitialValidatorSet))
-	for i, validator := range polyBFTConfig.InitialValidatorSet {
-		validatorAddresses[i] = validator.Address
-	}
-
-	initFn := &contractsapi.InitializeValidatorsContractFn{
-		Validators: validatorAddresses,
-	}
-
-	data, err := initFn.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("ValidatorsContract.initialize params encoding failed: %w", err)
-	}
-
-	constructor := &contractsapi.ApexProxyConstructorFn{
-		Implementation: contracts.ValidatorsContractAddr,
-		Data:           data,
-	}
-
-	input, err := constructor.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("ValidatorsContractProxy constructor params encoding failed: %w", err)
-	}
-
-	err = callContract(contracts.SystemCaller, contracts.ValidatorsContract, input, "ERC1967Proxy.constructor", transition)
-	if err != nil {
-		return err
-	}
-
-	input, err = initFn.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("ValidatorsContract.initialize encoding for proxy failed: %w", err)
-	}
-
-	err = callContract(contracts.ValidatorsContract, contracts.ValidatorsContractAddr, input, "ValidatorsContract.initialize", transition)
-	if err != nil {
-		return err
-	}
-
+func initValidatorsContract(transition *state.Transition) error {
 	setDependenciesFn := &contractsapi.SetDependenciesValidatorsContractFn{
 		BridgeContractAddress: contracts.BridgeContract,
 	}
 
-	input, err = setDependenciesFn.EncodeAbi()
+	input, err := setDependenciesFn.EncodeAbi()
 	if err != nil {
 		return fmt.Errorf("ValidatorsContract.setDependencies params encoding failed: %w", err)
 	}
 
-	return callContract(contracts.ValidatorsContract,
-		contracts.ValidatorsContractAddr, input, "ValidatorsContract.setDependencies", transition)
+	return callContract(contracts.SystemCaller,
+		contracts.ValidatorsContract, input, "ValidatorsContract.setDependencies", transition)
 }
 
 // initSlotsManager initializes SlotsManager SC
 func initSlotsManager(transition *state.Transition) error {
-	initFn := &contractsapi.InitializeSlotsManagerFn{}
-
-	data, err := initFn.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("SlotsManager.initialize params encoding failed: %w", err)
-	}
-
-	constructor := &contractsapi.ApexProxyConstructorFn{
-		Implementation: contracts.SlotsManagerAddr,
-		Data:           data,
-	}
-
-	input, err := constructor.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("SlotsManagerProxy constructor params encoding failed: %w", err)
-	}
-
-	err = callContract(contracts.SystemCaller, contracts.SlotsManager, input, "ERC1967Proxy.constructor", transition)
-	if err != nil {
-		return err
-	}
-
-	input, err = initFn.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("SlotsManager.initialize encoding for proxy failed: %w", err)
-	}
-
-	err = callContract(contracts.SlotsManager, contracts.SlotsManagerAddr, input, "SlotsManager.initialize", transition)
-	if err != nil {
-		return err
-	}
-
 	setDependenciesFn := &contractsapi.SetDependenciesSlotsManagerFn{
 		BridgeContractAddress:     contracts.BridgeContract,
 		ValidatorsContractAddress: contracts.ValidatorsContract,
 	}
 
-	input, err = setDependenciesFn.EncodeAbi()
+	input, err := setDependenciesFn.EncodeAbi()
 	if err != nil {
 		return fmt.Errorf("SlotsManager.setDependencies params encoding failed: %w", err)
 	}
 
-	return callContract(contracts.SlotsManager,
-		contracts.SlotsManagerAddr, input, "SlotsManager.setDependencies", transition)
+	return callContract(contracts.SystemCaller,
+		contracts.SlotsManager, input, "SlotsManager.setDependencies", transition)
 }
 
 // initClaimsManager initializes ClaimsManager SC
 func initClaimsManager(transition *state.Transition) error {
-	initFn := &contractsapi.InitializeClaimsManagerFn{}
-
-	data, err := initFn.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("ClaimsManager.initialize params encoding failed: %w", err)
-	}
-
-	constructor := &contractsapi.ApexProxyConstructorFn{
-		Implementation: contracts.ClaimsManagerAddr,
-		Data:           data,
-	}
-
-	input, err := constructor.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("ClaimsManagerProxy constructor params encoding failed: %w", err)
-	}
-
-	err = callContract(contracts.SystemCaller, contracts.ClaimsManager, input, "ERC1967Proxy.constructor", transition)
-	if err != nil {
-		return err
-	}
-
-	input, err = initFn.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("ClaimsManager.initialize encoding for proxy failed: %w", err)
-	}
-
-	err = callContract(contracts.ClaimsManager, contracts.ClaimsManagerAddr, input, "ClaimsManager.initialize", transition)
-	if err != nil {
-		return err
-	}
-
 	setDependenciesFn := &contractsapi.SetDependenciesClaimsManagerFn{
 		BridgeContractAddress:     contracts.BridgeContract,
 		ClaimsHelperAddress:       contracts.ClaimsHelper,
 		UtxosManager:              contracts.UTXOsManager,
 		ValidatorsContractAddress: contracts.ValidatorsContract,
-		MaxNumberOfTransactions:   0,
+		MaxNumberOfTransactions:   0, // APEX-TODO: Define
 		TimeoutBlocksNumber:       0,
 	}
 
-	input, err = setDependenciesFn.EncodeAbi()
+	input, err := setDependenciesFn.EncodeAbi()
 	if err != nil {
 		return fmt.Errorf("ClaimsManager.setDependencies params encoding failed: %w", err)
 	}
 
-	return callContract(contracts.ClaimsManager,
-		contracts.ClaimsManagerAddr, input, "ClaimsManager.setDependencies", transition)
+	return callContract(contracts.SystemCaller,
+		contracts.ClaimsManager, input, "ClaimsManager.setDependencies", transition)
 }
 
 // initUTXOsManager initializes UTXOsManager SC
 func initUTXOsManager(transition *state.Transition) error {
-	initFn := &contractsapi.InitializeUTXOsManagerFn{}
-
-	data, err := initFn.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("UTXOsManager.initialize params encoding failed: %w", err)
-	}
-
-	constructor := &contractsapi.ApexProxyConstructorFn{
-		Implementation: contracts.UTXOsManagerAddr,
-		Data:           data,
-	}
-
-	input, err := constructor.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("UTXOsManagerProxy constructor params encoding failed: %w", err)
-	}
-
-	err = callContract(contracts.SystemCaller, contracts.UTXOsManager, input, "ERC1967Proxy.constructor", transition)
-	if err != nil {
-		return err
-	}
-
-	input, err = initFn.EncodeAbi()
-	if err != nil {
-		return fmt.Errorf("UTXOsManager.initialize encoding for proxy failed: %w", err)
-	}
-
-	err = callContract(contracts.UTXOsManager, contracts.UTXOsManagerAddr, input, "UTXOsManager.initialize", transition)
-	if err != nil {
-		return err
-	}
-
 	setDependenciesFn := &contractsapi.SetDependenciesUTXOsManagerFn{
 		BridgeContractAddress: contracts.BridgeContract,
 		ClaimsManagerAddress:  contracts.ClaimsManager,
 	}
 
-	input, err = setDependenciesFn.EncodeAbi()
+	input, err := setDependenciesFn.EncodeAbi()
 	if err != nil {
 		return fmt.Errorf("UTXOsManager.setDependencies params encoding failed: %w", err)
 	}
 
-	return callContract(contracts.UTXOsManager,
-		contracts.UTXOsManagerAddr, input, "UTXOsManager.setDependencies", transition)
+	return callContract(contracts.SystemCaller,
+		contracts.UTXOsManager, input, "UTXOsManager.setDependencies", transition)
 }

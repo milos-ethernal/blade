@@ -374,6 +374,12 @@ func (p *genesisParams) deployContracts(rewardTokenByteCode []byte,
 		proxyAddresses = append(proxyAddresses, proxyAddr)
 	}
 
+	apexProxyToImplAddrMap := contracts.GetApexProxyImplementationMapping()
+
+	for proxyAddr := range apexProxyToImplAddrMap {
+		proxyAddresses = append(proxyAddresses, proxyAddr)
+	}
+
 	genesisContracts := []*contractInfo{
 		{
 			// State receiver contract

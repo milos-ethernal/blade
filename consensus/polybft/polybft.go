@@ -201,6 +201,12 @@ func GenesisPostHookFactory(config *chain.Chain, engineName string) func(txn *st
 			return err
 		}
 
+		// Initialize Apex proxies
+
+		if err = initApexProxies(transition, polyBFTConfig.ProxyContractsAdmin, contracts.GetApexProxyImplementationMapping(), polyBFTConfig); err != nil {
+			return err
+		}
+
 		// Initialize Apex contracts
 
 		if err = initBridgeContract(transition); err != nil {
@@ -215,7 +221,7 @@ func GenesisPostHookFactory(config *chain.Chain, engineName string) func(txn *st
 			return err
 		}
 
-		if err = initValidatorsContract(polyBFTConfig, transition); err != nil {
+		if err = initValidatorsContract(transition); err != nil {
 			return err
 		}
 

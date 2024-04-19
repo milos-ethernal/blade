@@ -165,3 +165,15 @@ func GetProxyImplementationMapping() map[types.Address]types.Address {
 		ChildGovernorContract:                ChildGovernorContractV1,
 	}
 }
+
+func GetApexProxyImplementationMapping() map[types.Address]types.Address {
+	return map[types.Address]types.Address{
+		BridgeContract:     BridgeContractAddr,
+		ClaimsHelper:       ClaimsHelperAddr,
+		ClaimsManager:      ClaimsManagerAddr,
+		SignedBatchManager: SignedBatchManagerAddr,
+		SlotsManager:       SlotsManagerAddr,
+		UTXOsManager:       UTXOsManagerAddr,
+		ValidatorsContract: ValidatorsContractAddr,
+	}
+}
