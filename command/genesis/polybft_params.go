@@ -443,7 +443,7 @@ func (p *genesisParams) deployContracts(rewardTokenByteCode []byte,
 		// Apex contracts
 		{
 			artifact: contractsapi.BridgeContract,
-			address:  contracts.BridgeContractAddr,
+			address:  contracts.BridgeAddr,
 		},
 		{
 			artifact: contractsapi.ClaimsHelper,
@@ -451,23 +451,23 @@ func (p *genesisParams) deployContracts(rewardTokenByteCode []byte,
 		},
 		{
 			artifact: contractsapi.ClaimsManager,
-			address:  contracts.ClaimsManagerAddr,
+			address:  contracts.ClaimsAddr,
 		},
 		{
 			artifact: contractsapi.SignedBatchManager,
-			address:  contracts.SignedBatchManagerAddr,
+			address:  contracts.SignedBatchesAddr,
 		},
 		{
 			artifact: contractsapi.SlotsManager,
-			address:  contracts.SlotsManagerAddr,
+			address:  contracts.SlotsAddr,
 		},
 		{
 			artifact: contractsapi.UTXOsManager,
-			address:  contracts.UTXOsManagerAddr,
+			address:  contracts.UTXOscAddr,
 		},
 		{
 			artifact: contractsapi.ValidatorsContract,
-			address:  contracts.ValidatorsContractAddr,
+			address:  contracts.ValidatorsAddr,
 		},
 	}
 

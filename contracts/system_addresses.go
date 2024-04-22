@@ -114,33 +114,33 @@ var (
 
 	// Apex contracts
 
-	// Address of BridgeContract proxy
-	BridgeContract     = types.StringToAddress("0x0400000000000000000000000000000000000000")
-	BridgeContractAddr = types.StringToAddress("0x0400000000000000000000000000000000000010")
+	// Address of Bridge proxy
+	Bridge     = types.StringToAddress("0x0400000000000000000000000000000000000000")
+	BridgeAddr = types.StringToAddress("0x0400000000000000000000000000000000000010")
 
 	// Address of ClaimsHelper proxy
 	ClaimsHelper     = types.StringToAddress("0x0400000000000000000000000000000000000001")
 	ClaimsHelperAddr = types.StringToAddress("0x0400000000000000000000000000000000000011")
 
-	// Address of ClaimsManager proxy
-	ClaimsManager     = types.StringToAddress("0x0400000000000000000000000000000000000002")
-	ClaimsManagerAddr = types.StringToAddress("0x0400000000000000000000000000000000000012")
+	// Address of Claims proxy
+	Claims     = types.StringToAddress("0x0400000000000000000000000000000000000002")
+	ClaimsAddr = types.StringToAddress("0x0400000000000000000000000000000000000012")
 
-	// Address of SignedBatchManager proxy
-	SignedBatchManager     = types.StringToAddress("0x0400000000000000000000000000000000000003")
-	SignedBatchManagerAddr = types.StringToAddress("0x0400000000000000000000000000000000000013")
+	// Address of SignedBatches proxy
+	SignedBatches     = types.StringToAddress("0x0400000000000000000000000000000000000003")
+	SignedBatchesAddr = types.StringToAddress("0x0400000000000000000000000000000000000013")
 
-	// Address of SlotsManager proxy
-	SlotsManager     = types.StringToAddress("0x0400000000000000000000000000000000000004")
-	SlotsManagerAddr = types.StringToAddress("0x0400000000000000000000000000000000000014")
+	// Address of Slots proxy
+	Slots     = types.StringToAddress("0x0400000000000000000000000000000000000004")
+	SlotsAddr = types.StringToAddress("0x0400000000000000000000000000000000000014")
 
-	// Address of UTXOsManager proxy
-	UTXOsManager     = types.StringToAddress("0x0400000000000000000000000000000000000005")
-	UTXOsManagerAddr = types.StringToAddress("0x0400000000000000000000000000000000000015")
+	// Address of UTXOsc proxy
+	UTXOsc     = types.StringToAddress("0x0400000000000000000000000000000000000005")
+	UTXOscAddr = types.StringToAddress("0x0400000000000000000000000000000000000015")
 
-	// Address of ValidatorsContract proxy
-	ValidatorsContract     = types.StringToAddress("0x0400000000000000000000000000000000000006")
-	ValidatorsContractAddr = types.StringToAddress("0x0400000000000000000000000000000000000016")
+	// Address of Validators proxy
+	Validators     = types.StringToAddress("0x0400000000000000000000000000000000000006")
+	ValidatorsAddr = types.StringToAddress("0x0400000000000000000000000000000000000016")
 )
 
 // GetProxyImplementationMapping retrieves the addresses of proxy contracts that should be deployed unconditionally
@@ -168,12 +168,12 @@ func GetProxyImplementationMapping() map[types.Address]types.Address {
 
 func GetApexProxyImplementationMapping() map[types.Address]types.Address {
 	return map[types.Address]types.Address{
-		BridgeContract:     BridgeContractAddr,
-		ClaimsHelper:       ClaimsHelperAddr,
-		ClaimsManager:      ClaimsManagerAddr,
-		SignedBatchManager: SignedBatchManagerAddr,
-		SlotsManager:       SlotsManagerAddr,
-		UTXOsManager:       UTXOsManagerAddr,
-		ValidatorsContract: ValidatorsContractAddr,
+		Bridge:        BridgeAddr,
+		ClaimsHelper:  ClaimsHelperAddr,
+		Claims:        ClaimsAddr,
+		SignedBatches: SignedBatchesAddr,
+		Slots:         SlotsAddr,
+		UTXOsc:        UTXOscAddr,
+		Validators:    ValidatorsAddr,
 	}
 }
