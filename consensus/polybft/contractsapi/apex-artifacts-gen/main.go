@@ -34,32 +34,32 @@ package contractsapi
 		Name string
 	}{
 		{
-			"BridgeContract.sol",
-			"BridgeContract",
+			"Bridge.sol",
+			"Bridge",
 		},
 		{
 			"ClaimsHelper.sol",
 			"ClaimsHelper",
 		},
 		{
-			"ClaimsManager.sol",
-			"ClaimsManager",
+			"Claims.sol",
+			"Claims",
 		},
 		{
-			"SignedBatchManager.sol",
-			"SignedBatchManager",
+			"SignedBatches.sol",
+			"SignedBatches",
 		},
 		{
-			"SlotsManager.sol",
-			"SlotsManager",
+			"Slots.sol",
+			"Slots",
 		},
 		{
-			"UTXOsManager.sol",
-			"UTXOsManager",
+			"UTXOsc.sol",
+			"UTXOsc",
 		},
 		{
-			"ValidatorsContract.sol",
-			"ValidatorsContract",
+			"Validators.sol",
+			"Validators",
 		},
 	}
 
@@ -76,20 +76,6 @@ package contractsapi
 
 		str += fmt.Sprintf("var %sArtifact string = `%s`\n", v.Name, dst.String())
 	}
-
-	// Proxy contract
-	scpath = path.Join(currentPath, "../../../../openzeppelin-contracts/artifacts/contracts/proxy/ERC1967")
-	artifactBytes, err := contracts.ReadRawArtifact(scpath, "ERC1967Proxy.sol", getContractName("ERC1967Proxy"))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	dst := &bytes.Buffer{}
-	if err = json.Compact(dst, artifactBytes); err != nil {
-		log.Fatal(err)
-	}
-
-	str += fmt.Sprintf("var %sArtifact string = `%s`\n", "ApexProxy", dst.String())
 
 	output, err := format.Source([]byte(str))
 	if err != nil {

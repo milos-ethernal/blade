@@ -634,13 +634,6 @@ import (
 			},
 			[]string{},
 		},
-		{
-			"ApexProxy",
-			gensc.ApexProxy,
-			true,
-			[]string{},
-			[]string{},
-		},
 	}
 
 	generatedData = generateData(contractsMetadata)

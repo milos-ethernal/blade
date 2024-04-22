@@ -82,7 +82,6 @@ var (
 	SlotsManager       *contracts.Artifact
 	UTXOsManager       *contracts.Artifact
 	ValidatorsContract *contracts.Artifact
-	ApexProxy          *contracts.Artifact
 
 	contractArtifacts map[string]*contracts.Artifact
 )
@@ -341,7 +340,7 @@ func init() {
 	}
 
 	// Apex contracts
-	BridgeContract, err = contracts.DecodeArtifact([]byte(BridgeContractArtifact))
+	BridgeContract, err = contracts.DecodeArtifact([]byte(BridgeArtifact))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -351,32 +350,27 @@ func init() {
 		log.Fatal(err)
 	}
 
-	ClaimsManager, err = contracts.DecodeArtifact([]byte(ClaimsManagerArtifact))
+	ClaimsManager, err = contracts.DecodeArtifact([]byte(ClaimsArtifact))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	SignedBatchManager, err = contracts.DecodeArtifact([]byte(SignedBatchManagerArtifact))
+	SignedBatchManager, err = contracts.DecodeArtifact([]byte(SignedBatchesArtifact))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	SlotsManager, err = contracts.DecodeArtifact([]byte(SlotsManagerArtifact))
+	SlotsManager, err = contracts.DecodeArtifact([]byte(SlotsArtifact))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	UTXOsManager, err = contracts.DecodeArtifact([]byte(UTXOsManagerArtifact))
+	UTXOsManager, err = contracts.DecodeArtifact([]byte(UTXOscArtifact))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	ValidatorsContract, err = contracts.DecodeArtifact([]byte(ValidatorsContractArtifact))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	ApexProxy, err = contracts.DecodeArtifact([]byte(ApexProxyArtifact))
+	ValidatorsContract, err = contracts.DecodeArtifact([]byte(ValidatorsArtifact))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -439,7 +433,6 @@ func init() {
 		"SlotsManager":                    SlotsManager,
 		"UTXOsManager":                    UTXOsManager,
 		"ValidatorsContract":              ValidatorsContract,
-		"ApexProxy":                       ApexProxy,
 	}
 }
 

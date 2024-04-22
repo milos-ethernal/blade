@@ -492,7 +492,7 @@ func getDataForApexContract(contract types.Address, polyBFTConfig PolyBFTConfig)
 		}
 
 		return (&contractsapi.InitializeValidatorsContractFn{
-			Validators: validatorAddresses,
+			ValidatorsArray: validatorAddresses,
 		}).EncodeAbi()
 	case contracts.SlotsManager:
 		return (&contractsapi.InitializeSlotsManagerFn{}).EncodeAbi()
@@ -510,11 +510,11 @@ func getDataForApexContract(contract types.Address, polyBFTConfig PolyBFTConfig)
 // initBridgeContract initializes BridgeContract and it's proxy SC
 func initBridgeContract(transition *state.Transition) error {
 	setDependenciesFn := &contractsapi.SetDependenciesBridgeContractFn{
-		ClaimsManagerAddress:      contracts.ClaimsManager,
-		SignedBatchManagerAddress: contracts.SignedBatchManager,
-		SlotsManagerAddress:       contracts.SlotsManager,
-		UtxosManagerAddress:       contracts.UTXOsManager,
-		ValidatorsContractAddress: contracts.ValidatorsContract,
+		ClaimsAddress:          contracts.ClaimsManager,
+		SignedBatchesAddress:   contracts.SignedBatchManager,
+		SlotsAddress:           contracts.SlotsManager,
+		UtxoscAddress:          contracts.UTXOsManager,
+		ValidatorsArrayAddress: contracts.ValidatorsContract,
 	}
 
 	input, err := setDependenciesFn.EncodeAbi()
@@ -529,9 +529,9 @@ func initBridgeContract(transition *state.Transition) error {
 // initSignedBatchManager initializes SignedBatchManager SC
 func initSignedBatchManager(transition *state.Transition) error {
 	setDependenciesFn := &contractsapi.SetDependenciesSignedBatchManagerFn{
-		BridgeContractAddress:     contracts.BridgeContract,
-		ClaimsHelperAddress:       contracts.ClaimsHelper,
-		ValidatorsContractAddress: contracts.ValidatorsContract,
+		BridgeAddress:          contracts.BridgeContract,
+		ClaimsHelperAddress:    contracts.ClaimsHelper,
+		ValidatorsArrayAddress: contracts.ValidatorsContract,
 	}
 
 	input, err := setDependenciesFn.EncodeAbi()
@@ -546,8 +546,8 @@ func initSignedBatchManager(transition *state.Transition) error {
 // initClaimsHelper initializes ClaimsHelper SC
 func initClaimsHelper(transition *state.Transition) error {
 	setDependenciesFn := &contractsapi.SetDependenciesClaimsHelperFn{
-		ClaimsManagerAddress:      contracts.ClaimsManager,
-		SignedBatchManagerAddress: contracts.SignedBatchManager,
+		ClaimsAddress:        contracts.ClaimsManager,
+		SignedBatchesAddress: contracts.SignedBatchManager,
 	}
 
 	input, err := setDependenciesFn.EncodeAbi()
@@ -562,7 +562,7 @@ func initClaimsHelper(transition *state.Transition) error {
 // initValidatorsContract initializes ValidatorsContract SC
 func initValidatorsContract(transition *state.Transition) error {
 	setDependenciesFn := &contractsapi.SetDependenciesValidatorsContractFn{
-		BridgeContractAddress: contracts.BridgeContract,
+		BridgeAddress: contracts.BridgeContract,
 	}
 
 	input, err := setDependenciesFn.EncodeAbi()
@@ -577,8 +577,8 @@ func initValidatorsContract(transition *state.Transition) error {
 // initSlotsManager initializes SlotsManager SC
 func initSlotsManager(transition *state.Transition) error {
 	setDependenciesFn := &contractsapi.SetDependenciesSlotsManagerFn{
-		BridgeContractAddress:     contracts.BridgeContract,
-		ValidatorsContractAddress: contracts.ValidatorsContract,
+		BridgeAddress:          contracts.BridgeContract,
+		ValidatorsArrayAddress: contracts.ValidatorsContract,
 	}
 
 	input, err := setDependenciesFn.EncodeAbi()
@@ -593,12 +593,12 @@ func initSlotsManager(transition *state.Transition) error {
 // initClaimsManager initializes ClaimsManager SC
 func initClaimsManager(transition *state.Transition) error {
 	setDependenciesFn := &contractsapi.SetDependenciesClaimsManagerFn{
-		BridgeContractAddress:     contracts.BridgeContract,
-		ClaimsHelperAddress:       contracts.ClaimsHelper,
-		UtxosManager:              contracts.UTXOsManager,
-		ValidatorsContractAddress: contracts.ValidatorsContract,
-		MaxNumberOfTransactions:   0, // APEX-TODO: Define
-		TimeoutBlocksNumber:       0,
+		BridgeAddress:           contracts.BridgeContract,
+		ClaimsHelperAddress:     contracts.ClaimsHelper,
+		Utxosc:                  contracts.UTXOsManager,
+		ValidatorsArrayAddress:  contracts.ValidatorsContract,
+		MaxNumberOfTransactions: 0, // APEX-TODO: Define
+		TimeoutBlocksNumber:     0,
 	}
 
 	input, err := setDependenciesFn.EncodeAbi()
@@ -613,8 +613,8 @@ func initClaimsManager(transition *state.Transition) error {
 // initUTXOsManager initializes UTXOsManager SC
 func initUTXOsManager(transition *state.Transition) error {
 	setDependenciesFn := &contractsapi.SetDependenciesUTXOsManagerFn{
-		BridgeContractAddress: contracts.BridgeContract,
-		ClaimsManagerAddress:  contracts.ClaimsManager,
+		BridgeAddress: contracts.BridgeContract,
+		ClaimsAddress: contracts.ClaimsManager,
 	}
 
 	input, err := setDependenciesFn.EncodeAbi()
