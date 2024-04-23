@@ -73,6 +73,8 @@ var (
 	TestRewardToken        *contracts.Artifact
 	Wrapper                *contracts.Artifact
 	NumberPersister        *contracts.Artifact
+	ZexCoinERC20           *contracts.Artifact
+	ZexNFT                 *contracts.Artifact
 
 	// Apex smart contracts
 	BridgeContract     *contracts.Artifact
@@ -339,6 +341,16 @@ func init() {
 		log.Fatal(err)
 	}
 
+	ZexCoinERC20, err = contracts.DecodeArtifact(readTestContractContent("ZexCoinERC20.json"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ZexNFT, err = contracts.DecodeArtifact(readTestContractContent("ZexNFT.json"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Apex contracts
 	BridgeContract, err = contracts.DecodeArtifact([]byte(BridgeArtifact))
 	if err != nil {
@@ -426,6 +438,8 @@ func init() {
 		"RootERC20":                       RootERC20,
 		"TestSimple":                      TestSimple,
 		"TestRewardToken":                 TestRewardToken,
+		"ZexCoinERC20":                    ZexCoinERC20,
+		"ZexNFT":                          ZexNFT,
 		"BridgeContract":                  BridgeContract,
 		"ClaimsHelper":                    ClaimsHelper,
 		"ClaimsManager":                   ClaimsManager,

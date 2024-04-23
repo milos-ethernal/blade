@@ -71,6 +71,7 @@ type blockchainBackend interface {
 var _ blockchainBackend = &blockchainWrapper{}
 
 type blockchainWrapper struct {
+	logger     hclog.Logger
 	executor   *state.Executor
 	blockchain *blockchain.Blockchain
 }
@@ -90,16 +91,9 @@ func (p *blockchainWrapper) ProcessBlock(parent *types.Header, block *types.Bloc
 	header := block.Header.Copy()
 	start := time.Now().UTC()
 
-	transition, err := p.executor.BeginTxn(parent.StateRoot, header, types.BytesToAddress(header.Miner))
+	transition, err := p.executor.ProcessBlock(parent.StateRoot, block, types.Address(header.Miner))
 	if err != nil {
-		return nil, err
-	}
-
-	// apply transactions from block
-	for _, tx := range block.Transactions {
-		if err = transition.Write(tx); err != nil {
-			return nil, fmt.Errorf("process block tx error, tx = %v, err = %w", tx.Hash(), err)
-		}
+		return nil, fmt.Errorf("failed to process block: %w", err)
 	}
 
 	_, root, err := transition.Commit()

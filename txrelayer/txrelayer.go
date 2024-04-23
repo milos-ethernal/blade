@@ -46,6 +46,8 @@ type TxRelayer interface {
 	SendTransactionLocal(txn *types.Transaction) (*ethgo.Receipt, error)
 	// Client returns jsonrpc client
 	Client() *jsonrpc.EthClient
+	// GetTxnHashes returns hashes of sent transactions
+	GetTxnHashes() []types.Hash
 }
 
 var _ TxRelayer = (*TxRelayerImpl)(nil)
@@ -57,6 +59,11 @@ type TxRelayerImpl struct {
 	receiptsTimeout     time.Duration
 	noWaitReceipt       bool
 	estimateGasFallback bool
+	nonceGet            bool
+	collectTxnHashes    bool
+	chainID             *big.Int
+
+	txnHashes []types.Hash
 
 	lock sync.Mutex
 
@@ -68,6 +75,7 @@ func NewTxRelayer(opts ...TxRelayerOption) (TxRelayer, error) {
 		ipAddress:        DefaultRPCAddress,
 		receiptsPollFreq: DefaultPollFreq,
 		receiptsTimeout:  DefaultTimeoutTransactions,
+		nonceGet:         true,
 	}
 	for _, opt := range opts {
 		opt(t)
@@ -94,6 +102,11 @@ func NewTxRelayer(opts ...TxRelayerOption) (TxRelayer, error) {
 	}
 
 	return t, nil
+}
+
+// GetTxnHashes returns hashes of sent transactions
+func (t *TxRelayerImpl) GetTxnHashes() []types.Hash {
+	return t.txnHashes
 }
 
 // Call executes a message call immediately without creating a transaction on the blockchain
@@ -134,6 +147,10 @@ func (t *TxRelayerImpl) SendTransaction(txn *types.Transaction, key crypto.Key) 
 		return nil, err
 	}
 
+	if t.collectTxnHashes {
+		t.txnHashes = append(t.txnHashes, txnHash)
+	}
+
 	return t.waitForReceipt(txnHash)
 }
 
@@ -146,18 +163,27 @@ func (t *TxRelayerImpl) sendTransactionLocked(txn *types.Transaction, key crypto
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	nonce, err := t.client.GetNonce(key.Address(), jsonrpc.PendingBlockNumberOrHash)
-	if err != nil {
-		return types.ZeroHash, fmt.Errorf("failed to get nonce: %w", err)
+	var err error
+
+	if t.nonceGet {
+		nonce, err := t.client.GetNonce(key.Address(), jsonrpc.PendingBlockNumberOrHash)
+		if err != nil {
+			return types.ZeroHash, fmt.Errorf("failed to get nonce: %w", err)
+		}
+
+		txn.SetNonce(nonce)
 	}
 
-	chainID, err := t.client.ChainID()
-	if err != nil {
-		return types.ZeroHash, err
+	chainID := t.chainID
+
+	if chainID == nil {
+		chainID, err = t.client.ChainID()
+		if err != nil {
+			return types.ZeroHash, err
+		}
 	}
 
 	txn.SetChainID(chainID)
-	txn.SetNonce(nonce)
 
 	if txn.From() == types.ZeroAddress {
 		txn.SetFrom(key.Address())
@@ -261,6 +287,10 @@ func (t *TxRelayerImpl) SendTransactionLocal(txn *types.Transaction) (*ethgo.Rec
 		return nil, err
 	}
 
+	if t.collectTxnHashes {
+		t.txnHashes = append(t.txnHashes, txnHash)
+	}
+
 	return t.waitForReceipt(txnHash)
 }
 
@@ -334,18 +364,33 @@ func (t *TxRelayerImpl) waitForReceipt(hash types.Hash) (*ethgo.Receipt, error) 
 
 // ConvertTxnToCallMsg converts txn instance to call message
 func ConvertTxnToCallMsg(txn *types.Transaction) *jsonrpc.CallMsg {
-	gasPrice := big.NewInt(0)
-	if txn.GasPrice() != nil {
-		gasPrice = gasPrice.Set(txn.GasPrice())
+
+	var (
+		gasPrice  *big.Int
+		gasFeeCap *big.Int
+		gasTipCap *big.Int
+	)
+
+	if txn.Type() != types.DynamicFeeTxType {
+		if txn.GasPrice() != nil {
+			gasPrice = new(big.Int).Set(txn.GasPrice())
+		}
+	} else {
+		gasFeeCap = txn.GasFeeCap()
+		gasTipCap = txn.GasTipCap()
 	}
 
 	return &jsonrpc.CallMsg{
-		From:     txn.From(),
-		To:       txn.To(),
-		Data:     txn.Input(),
-		GasPrice: gasPrice,
-		Value:    txn.Value(),
-		Gas:      txn.Gas(),
+		From:       txn.From(),
+		To:         txn.To(),
+		Data:       txn.Input(),
+		GasPrice:   gasPrice,
+		GasFeeCap:  gasFeeCap,
+		GasTipCap:  gasTipCap,
+		Type:       uint64(txn.Type()),
+		Value:      txn.Value(),
+		Gas:        txn.Gas(),
+		AccessList: txn.AccessList(),
 	}
 }
 
@@ -387,5 +432,23 @@ func WithReceiptsTimeout(receiptsTimeout time.Duration) TxRelayerOption {
 func WithEstimateGasFallback() TxRelayerOption {
 	return func(t *TxRelayerImpl) {
 		t.estimateGasFallback = true
+	}
+}
+
+func WithChainID(chainID *big.Int) TxRelayerOption {
+	return func(t *TxRelayerImpl) {
+		t.chainID = chainID
+	}
+}
+
+func WithoutNonceGet() TxRelayerOption {
+	return func(t *TxRelayerImpl) {
+		t.nonceGet = false
+	}
+}
+
+func WithCollectTxnHashes() TxRelayerOption {
+	return func(t *TxRelayerImpl) {
+		t.collectTxnHashes = true
 	}
 }

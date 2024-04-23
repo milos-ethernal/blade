@@ -147,12 +147,21 @@ func NewServer(config *Config) (*Server, error) {
 		restoreProgression: progress.NewProgressionWrapper(progress.ChainSyncRestore),
 	}
 
-	m.logger.Info("Data dir", "path", config.DataDir)
-	m.logger.Info("Version metadata",
+	m.logger.Info("data dir", "path", config.DataDir)
+	m.logger.Info("version metadata",
 		"version", versioning.Version,
 		"commit", versioning.Commit,
 		"branch", versioning.Branch,
 		"build time", versioning.BuildTime)
+
+	if m.logger.IsDebug() {
+		chainConfigJSON, err := json.MarshalIndent(config.Chain, "", "\t")
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal chain config to JSON: %w", err)
+		}
+
+		m.logger.Debug(fmt.Sprintf("chain configuration %s", string(chainConfigJSON)))
+	}
 
 	var dirPaths = []string{
 		"blockchain",
@@ -209,7 +218,7 @@ func NewServer(config *Config) (*Server, error) {
 	st := itrie.NewState(stateStorage)
 	m.state = st
 
-	m.executor = state.NewExecutor(config.Chain.Params, st, logger)
+	m.executor = state.NewExecutor(config.Chain.Params, st, logger.Named("executor"))
 
 	// custom write genesis hook per consensus engine
 	engineName := m.config.Chain.Params.GetEngine()
@@ -876,6 +885,8 @@ func (s *Server) setupJSONRPC() error {
 		ConcurrentRequestsDebug:  s.config.JSONRPC.ConcurrentRequestsDebug,
 		WebSocketReadLimit:       s.config.JSONRPC.WebSocketReadLimit,
 		UseTLS:                   s.config.UseTLS,
+		TLSCertFile:              s.config.TLSCertFile,
+		TLSKeyFile:               s.config.TLSKeyFile,
 		SecretsManager:           s.secretsManager,
 	}
 
