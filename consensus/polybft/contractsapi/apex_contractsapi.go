@@ -21,11 +21,11 @@ func (i *InitializeBridgeContractFn) DecodeAbi(buf []byte) error {
 }
 
 type SetDependenciesBridgeContractFn struct {
-	ClaimsAddress          types.Address `abi:"_claimsAddress"`
-	SignedBatchesAddress   types.Address `abi:"_signedBatchesAddress"`
-	SlotsAddress           types.Address `abi:"_slotsAddress"`
-	UtxoscAddress          types.Address `abi:"_utxoscAddress"`
-	ValidatorsArrayAddress types.Address `abi:"_validatorsArrayAddress"`
+	ClaimsAddress        types.Address `abi:"_claimsAddress"`
+	SignedBatchesAddress types.Address `abi:"_signedBatchesAddress"`
+	SlotsAddress         types.Address `abi:"_slotsAddress"`
+	UtxoscAddress        types.Address `abi:"_utxoscAddress"`
+	ValidatorsAddress    types.Address `abi:"_validatorsAddress"`
 }
 
 func (s *SetDependenciesBridgeContractFn) Sig() []byte {
@@ -73,6 +73,8 @@ func (s *SetDependenciesClaimsHelperFn) DecodeAbi(buf []byte) error {
 }
 
 type InitializeClaimsManagerFn struct {
+	MaxNumberOfTransactions uint16 `abi:"_maxNumberOfTransactions"`
+	TimeoutBlocksNumber     uint8  `abi:"_timeoutBlocksNumber"`
 }
 
 func (i *InitializeClaimsManagerFn) Sig() []byte {
@@ -88,12 +90,10 @@ func (i *InitializeClaimsManagerFn) DecodeAbi(buf []byte) error {
 }
 
 type SetDependenciesClaimsManagerFn struct {
-	BridgeAddress           types.Address `abi:"_bridgeAddress"`
-	ClaimsHelperAddress     types.Address `abi:"_claimsHelperAddress"`
-	Utxosc                  types.Address `abi:"_utxosc"`
-	ValidatorsArrayAddress  types.Address `abi:"_validatorsArrayAddress"`
-	MaxNumberOfTransactions uint16        `abi:"_maxNumberOfTransactions"`
-	TimeoutBlocksNumber     uint8         `abi:"_timeoutBlocksNumber"`
+	BridgeAddress       types.Address `abi:"_bridgeAddress"`
+	ClaimsHelperAddress types.Address `abi:"_claimsHelperAddress"`
+	Utxosc              types.Address `abi:"_utxosc"`
+	ValidatorsAddress   types.Address `abi:"_validatorsAddress"`
 }
 
 func (s *SetDependenciesClaimsManagerFn) Sig() []byte {
@@ -124,9 +124,9 @@ func (i *InitializeSignedBatchManagerFn) DecodeAbi(buf []byte) error {
 }
 
 type SetDependenciesSignedBatchManagerFn struct {
-	BridgeAddress          types.Address `abi:"_bridgeAddress"`
-	ClaimsHelperAddress    types.Address `abi:"_claimsHelperAddress"`
-	ValidatorsArrayAddress types.Address `abi:"_validatorsArrayAddress"`
+	BridgeAddress       types.Address `abi:"_bridgeAddress"`
+	ClaimsHelperAddress types.Address `abi:"_claimsHelperAddress"`
+	ValidatorsAddress   types.Address `abi:"_validatorsAddress"`
 }
 
 func (s *SetDependenciesSignedBatchManagerFn) Sig() []byte {
@@ -157,8 +157,8 @@ func (i *InitializeSlotsManagerFn) DecodeAbi(buf []byte) error {
 }
 
 type SetDependenciesSlotsManagerFn struct {
-	BridgeAddress          types.Address `abi:"_bridgeAddress"`
-	ValidatorsArrayAddress types.Address `abi:"_validatorsArrayAddress"`
+	BridgeAddress     types.Address `abi:"_bridgeAddress"`
+	ValidatorsAddress types.Address `abi:"_validatorsAddress"`
 }
 
 func (s *SetDependenciesSlotsManagerFn) Sig() []byte {
@@ -206,7 +206,7 @@ func (s *SetDependenciesUTXOsManagerFn) DecodeAbi(buf []byte) error {
 }
 
 type InitializeValidatorsContractFn struct {
-	ValidatorsArray []types.Address `abi:"_validatorsArray"`
+	Validators []types.Address `abi:"_validators"`
 }
 
 func (i *InitializeValidatorsContractFn) Sig() []byte {
