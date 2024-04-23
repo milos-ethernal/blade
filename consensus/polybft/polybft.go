@@ -209,11 +209,11 @@ func GenesisPostHookFactory(config *chain.Chain, engineName string) func(txn *st
 
 		// Initialize Apex contracts
 
-		if err = initBridgeContract(transition); err != nil {
+		if err = initBridge(transition); err != nil {
 			return err
 		}
 
-		if err = initSignedBatchManager(transition); err != nil {
+		if err = initSignedBatches(transition); err != nil {
 			return err
 		}
 
@@ -221,19 +221,19 @@ func GenesisPostHookFactory(config *chain.Chain, engineName string) func(txn *st
 			return err
 		}
 
-		if err = initValidatorsContract(transition); err != nil {
+		if err = initValidators(transition); err != nil {
 			return err
 		}
 
-		if err = initSlotsManager(transition); err != nil {
+		if err = initSlots(transition); err != nil {
 			return err
 		}
 
-		if err = initClaimsManager(transition); err != nil {
+		if err = initClaims(transition); err != nil {
 			return err
 		}
 
-		if err = initUTXOsManager(transition); err != nil {
+		if err = initUTXOsc(transition); err != nil {
 			return err
 		}
 

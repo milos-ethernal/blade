@@ -76,15 +76,6 @@ var (
 	ZexCoinERC20           *contracts.Artifact
 	ZexNFT                 *contracts.Artifact
 
-	// Apex smart contracts
-	BridgeContract     *contracts.Artifact
-	ClaimsHelper       *contracts.Artifact
-	ClaimsManager      *contracts.Artifact
-	SignedBatchManager *contracts.Artifact
-	SlotsManager       *contracts.Artifact
-	UTXOsManager       *contracts.Artifact
-	ValidatorsContract *contracts.Artifact
-
 	contractArtifacts map[string]*contracts.Artifact
 )
 
@@ -352,37 +343,7 @@ func init() {
 	}
 
 	// Apex contracts
-	BridgeContract, err = contracts.DecodeArtifact([]byte(BridgeArtifact))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	ClaimsHelper, err = contracts.DecodeArtifact([]byte(ClaimsHelperArtifact))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	ClaimsManager, err = contracts.DecodeArtifact([]byte(ClaimsArtifact))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	SignedBatchManager, err = contracts.DecodeArtifact([]byte(SignedBatchesArtifact))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	SlotsManager, err = contracts.DecodeArtifact([]byte(SlotsArtifact))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	UTXOsManager, err = contracts.DecodeArtifact([]byte(UTXOscArtifact))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	ValidatorsContract, err = contracts.DecodeArtifact([]byte(ValidatorsArtifact))
+	Bridge, ClaimsHelper, Claims, SignedBatches, Slots, UTXOsc, Validators, err = initApexContracts()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -440,13 +401,13 @@ func init() {
 		"TestRewardToken":                 TestRewardToken,
 		"ZexCoinERC20":                    ZexCoinERC20,
 		"ZexNFT":                          ZexNFT,
-		"BridgeContract":                  BridgeContract,
+		"Bridge":                          Bridge,
 		"ClaimsHelper":                    ClaimsHelper,
-		"ClaimsManager":                   ClaimsManager,
-		"SignedBatchManager":              SignedBatchManager,
-		"SlotsManager":                    SlotsManager,
-		"UTXOsManager":                    UTXOsManager,
-		"ValidatorsContract":              ValidatorsContract,
+		"Claims":                          Claims,
+		"SignedBatches":                   SignedBatches,
+		"Slots":                           Slots,
+		"UTXOsc":                          UTXOsc,
+		"Validators":                      Validators,
 	}
 }
 

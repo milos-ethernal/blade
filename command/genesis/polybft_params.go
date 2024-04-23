@@ -440,9 +440,12 @@ func (p *genesisParams) deployContracts(rewardTokenByteCode []byte,
 			artifact: contractsapi.ChildTimelock,
 			address:  contracts.ChildTimelockContractV1,
 		},
+	}
+
+	apexContracts := []*contractInfo{
 		// Apex contracts
 		{
-			artifact: contractsapi.BridgeContract,
+			artifact: contractsapi.Bridge,
 			address:  contracts.BridgeAddr,
 		},
 		{
@@ -450,26 +453,27 @@ func (p *genesisParams) deployContracts(rewardTokenByteCode []byte,
 			address:  contracts.ClaimsHelperAddr,
 		},
 		{
-			artifact: contractsapi.ClaimsManager,
+			artifact: contractsapi.Claims,
 			address:  contracts.ClaimsAddr,
 		},
 		{
-			artifact: contractsapi.SignedBatchManager,
+			artifact: contractsapi.SignedBatches,
 			address:  contracts.SignedBatchesAddr,
 		},
 		{
-			artifact: contractsapi.SlotsManager,
+			artifact: contractsapi.Slots,
 			address:  contracts.SlotsAddr,
 		},
 		{
-			artifact: contractsapi.UTXOsManager,
+			artifact: contractsapi.UTXOsc,
 			address:  contracts.UTXOscAddr,
 		},
 		{
-			artifact: contractsapi.ValidatorsContract,
+			artifact: contractsapi.Validators,
 			address:  contracts.ValidatorsAddr,
 		},
 	}
+	genesisContracts = append(genesisContracts, apexContracts...)
 
 	if !params.nativeTokenConfig.IsMintable {
 		genesisContracts = append(genesisContracts,

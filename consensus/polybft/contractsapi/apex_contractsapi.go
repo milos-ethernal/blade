@@ -5,22 +5,22 @@ import (
 	"github.com/0xPolygon/polygon-edge/types"
 )
 
-type InitializeBridgeContractFn struct {
+type InitializeBridgeFn struct {
 }
 
-func (i *InitializeBridgeContractFn) Sig() []byte {
-	return BridgeContract.Abi.Methods["initialize"].ID()
+func (i *InitializeBridgeFn) Sig() []byte {
+	return Bridge.Abi.Methods["initialize"].ID()
 }
 
-func (i *InitializeBridgeContractFn) EncodeAbi() ([]byte, error) {
-	return BridgeContract.Abi.Methods["initialize"].Encode(i)
+func (i *InitializeBridgeFn) EncodeAbi() ([]byte, error) {
+	return Bridge.Abi.Methods["initialize"].Encode(i)
 }
 
-func (i *InitializeBridgeContractFn) DecodeAbi(buf []byte) error {
-	return decodeMethod(BridgeContract.Abi.Methods["initialize"], buf, i)
+func (i *InitializeBridgeFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(Bridge.Abi.Methods["initialize"], buf, i)
 }
 
-type SetDependenciesBridgeContractFn struct {
+type SetDependenciesBridgeFn struct {
 	ClaimsAddress        types.Address `abi:"_claimsAddress"`
 	SignedBatchesAddress types.Address `abi:"_signedBatchesAddress"`
 	SlotsAddress         types.Address `abi:"_slotsAddress"`
@@ -28,16 +28,16 @@ type SetDependenciesBridgeContractFn struct {
 	ValidatorsAddress    types.Address `abi:"_validatorsAddress"`
 }
 
-func (s *SetDependenciesBridgeContractFn) Sig() []byte {
-	return BridgeContract.Abi.Methods["setDependencies"].ID()
+func (s *SetDependenciesBridgeFn) Sig() []byte {
+	return Bridge.Abi.Methods["setDependencies"].ID()
 }
 
-func (s *SetDependenciesBridgeContractFn) EncodeAbi() ([]byte, error) {
-	return BridgeContract.Abi.Methods["setDependencies"].Encode(s)
+func (s *SetDependenciesBridgeFn) EncodeAbi() ([]byte, error) {
+	return Bridge.Abi.Methods["setDependencies"].Encode(s)
 }
 
-func (s *SetDependenciesBridgeContractFn) DecodeAbi(buf []byte) error {
-	return decodeMethod(BridgeContract.Abi.Methods["setDependencies"], buf, s)
+func (s *SetDependenciesBridgeFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(Bridge.Abi.Methods["setDependencies"], buf, s)
 }
 
 type InitializeClaimsHelperFn struct {
@@ -72,167 +72,167 @@ func (s *SetDependenciesClaimsHelperFn) DecodeAbi(buf []byte) error {
 	return decodeMethod(ClaimsHelper.Abi.Methods["setDependencies"], buf, s)
 }
 
-type InitializeClaimsManagerFn struct {
+type InitializeClaimsFn struct {
 	MaxNumberOfTransactions uint16 `abi:"_maxNumberOfTransactions"`
 	TimeoutBlocksNumber     uint8  `abi:"_timeoutBlocksNumber"`
 }
 
-func (i *InitializeClaimsManagerFn) Sig() []byte {
-	return ClaimsManager.Abi.Methods["initialize"].ID()
+func (i *InitializeClaimsFn) Sig() []byte {
+	return Claims.Abi.Methods["initialize"].ID()
 }
 
-func (i *InitializeClaimsManagerFn) EncodeAbi() ([]byte, error) {
-	return ClaimsManager.Abi.Methods["initialize"].Encode(i)
+func (i *InitializeClaimsFn) EncodeAbi() ([]byte, error) {
+	return Claims.Abi.Methods["initialize"].Encode(i)
 }
 
-func (i *InitializeClaimsManagerFn) DecodeAbi(buf []byte) error {
-	return decodeMethod(ClaimsManager.Abi.Methods["initialize"], buf, i)
+func (i *InitializeClaimsFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(Claims.Abi.Methods["initialize"], buf, i)
 }
 
-type SetDependenciesClaimsManagerFn struct {
+type SetDependenciesClaimsFn struct {
 	BridgeAddress       types.Address `abi:"_bridgeAddress"`
 	ClaimsHelperAddress types.Address `abi:"_claimsHelperAddress"`
 	Utxosc              types.Address `abi:"_utxosc"`
 	ValidatorsAddress   types.Address `abi:"_validatorsAddress"`
 }
 
-func (s *SetDependenciesClaimsManagerFn) Sig() []byte {
-	return ClaimsManager.Abi.Methods["setDependencies"].ID()
+func (s *SetDependenciesClaimsFn) Sig() []byte {
+	return Claims.Abi.Methods["setDependencies"].ID()
 }
 
-func (s *SetDependenciesClaimsManagerFn) EncodeAbi() ([]byte, error) {
-	return ClaimsManager.Abi.Methods["setDependencies"].Encode(s)
+func (s *SetDependenciesClaimsFn) EncodeAbi() ([]byte, error) {
+	return Claims.Abi.Methods["setDependencies"].Encode(s)
 }
 
-func (s *SetDependenciesClaimsManagerFn) DecodeAbi(buf []byte) error {
-	return decodeMethod(ClaimsManager.Abi.Methods["setDependencies"], buf, s)
+func (s *SetDependenciesClaimsFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(Claims.Abi.Methods["setDependencies"], buf, s)
 }
 
-type InitializeSignedBatchManagerFn struct {
+type InitializeSignedBatchesFn struct {
 }
 
-func (i *InitializeSignedBatchManagerFn) Sig() []byte {
-	return SignedBatchManager.Abi.Methods["initialize"].ID()
+func (i *InitializeSignedBatchesFn) Sig() []byte {
+	return SignedBatches.Abi.Methods["initialize"].ID()
 }
 
-func (i *InitializeSignedBatchManagerFn) EncodeAbi() ([]byte, error) {
-	return SignedBatchManager.Abi.Methods["initialize"].Encode(i)
+func (i *InitializeSignedBatchesFn) EncodeAbi() ([]byte, error) {
+	return SignedBatches.Abi.Methods["initialize"].Encode(i)
 }
 
-func (i *InitializeSignedBatchManagerFn) DecodeAbi(buf []byte) error {
-	return decodeMethod(SignedBatchManager.Abi.Methods["initialize"], buf, i)
+func (i *InitializeSignedBatchesFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(SignedBatches.Abi.Methods["initialize"], buf, i)
 }
 
-type SetDependenciesSignedBatchManagerFn struct {
+type SetDependenciesSignedBatchesFn struct {
 	BridgeAddress       types.Address `abi:"_bridgeAddress"`
 	ClaimsHelperAddress types.Address `abi:"_claimsHelperAddress"`
 	ValidatorsAddress   types.Address `abi:"_validatorsAddress"`
 }
 
-func (s *SetDependenciesSignedBatchManagerFn) Sig() []byte {
-	return SignedBatchManager.Abi.Methods["setDependencies"].ID()
+func (s *SetDependenciesSignedBatchesFn) Sig() []byte {
+	return SignedBatches.Abi.Methods["setDependencies"].ID()
 }
 
-func (s *SetDependenciesSignedBatchManagerFn) EncodeAbi() ([]byte, error) {
-	return SignedBatchManager.Abi.Methods["setDependencies"].Encode(s)
+func (s *SetDependenciesSignedBatchesFn) EncodeAbi() ([]byte, error) {
+	return SignedBatches.Abi.Methods["setDependencies"].Encode(s)
 }
 
-func (s *SetDependenciesSignedBatchManagerFn) DecodeAbi(buf []byte) error {
-	return decodeMethod(SignedBatchManager.Abi.Methods["setDependencies"], buf, s)
+func (s *SetDependenciesSignedBatchesFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(SignedBatches.Abi.Methods["setDependencies"], buf, s)
 }
 
-type InitializeSlotsManagerFn struct {
+type InitializeSlotsFn struct {
 }
 
-func (i *InitializeSlotsManagerFn) Sig() []byte {
-	return SlotsManager.Abi.Methods["initialize"].ID()
+func (i *InitializeSlotsFn) Sig() []byte {
+	return Slots.Abi.Methods["initialize"].ID()
 }
 
-func (i *InitializeSlotsManagerFn) EncodeAbi() ([]byte, error) {
-	return SlotsManager.Abi.Methods["initialize"].Encode(i)
+func (i *InitializeSlotsFn) EncodeAbi() ([]byte, error) {
+	return Slots.Abi.Methods["initialize"].Encode(i)
 }
 
-func (i *InitializeSlotsManagerFn) DecodeAbi(buf []byte) error {
-	return decodeMethod(SlotsManager.Abi.Methods["initialize"], buf, i)
+func (i *InitializeSlotsFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(Slots.Abi.Methods["initialize"], buf, i)
 }
 
-type SetDependenciesSlotsManagerFn struct {
+type SetDependenciesSlotsFn struct {
 	BridgeAddress     types.Address `abi:"_bridgeAddress"`
 	ValidatorsAddress types.Address `abi:"_validatorsAddress"`
 }
 
-func (s *SetDependenciesSlotsManagerFn) Sig() []byte {
-	return SlotsManager.Abi.Methods["setDependencies"].ID()
+func (s *SetDependenciesSlotsFn) Sig() []byte {
+	return Slots.Abi.Methods["setDependencies"].ID()
 }
 
-func (s *SetDependenciesSlotsManagerFn) EncodeAbi() ([]byte, error) {
-	return SlotsManager.Abi.Methods["setDependencies"].Encode(s)
+func (s *SetDependenciesSlotsFn) EncodeAbi() ([]byte, error) {
+	return Slots.Abi.Methods["setDependencies"].Encode(s)
 }
 
-func (s *SetDependenciesSlotsManagerFn) DecodeAbi(buf []byte) error {
-	return decodeMethod(SlotsManager.Abi.Methods["setDependencies"], buf, s)
+func (s *SetDependenciesSlotsFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(Slots.Abi.Methods["setDependencies"], buf, s)
 }
 
-type InitializeUTXOsManagerFn struct {
+type InitializeUTXOscFn struct {
 }
 
-func (i *InitializeUTXOsManagerFn) Sig() []byte {
-	return UTXOsManager.Abi.Methods["initialize"].ID()
+func (i *InitializeUTXOscFn) Sig() []byte {
+	return UTXOsc.Abi.Methods["initialize"].ID()
 }
 
-func (i *InitializeUTXOsManagerFn) EncodeAbi() ([]byte, error) {
-	return UTXOsManager.Abi.Methods["initialize"].Encode(i)
+func (i *InitializeUTXOscFn) EncodeAbi() ([]byte, error) {
+	return UTXOsc.Abi.Methods["initialize"].Encode(i)
 }
 
-func (i *InitializeUTXOsManagerFn) DecodeAbi(buf []byte) error {
-	return decodeMethod(UTXOsManager.Abi.Methods["initialize"], buf, i)
+func (i *InitializeUTXOscFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(UTXOsc.Abi.Methods["initialize"], buf, i)
 }
 
-type SetDependenciesUTXOsManagerFn struct {
+type SetDependenciesUTXOscFn struct {
 	BridgeAddress types.Address `abi:"_bridgeAddress"`
 	ClaimsAddress types.Address `abi:"_claimsAddress"`
 }
 
-func (s *SetDependenciesUTXOsManagerFn) Sig() []byte {
-	return UTXOsManager.Abi.Methods["setDependencies"].ID()
+func (s *SetDependenciesUTXOscFn) Sig() []byte {
+	return UTXOsc.Abi.Methods["setDependencies"].ID()
 }
 
-func (s *SetDependenciesUTXOsManagerFn) EncodeAbi() ([]byte, error) {
-	return UTXOsManager.Abi.Methods["setDependencies"].Encode(s)
+func (s *SetDependenciesUTXOscFn) EncodeAbi() ([]byte, error) {
+	return UTXOsc.Abi.Methods["setDependencies"].Encode(s)
 }
 
-func (s *SetDependenciesUTXOsManagerFn) DecodeAbi(buf []byte) error {
-	return decodeMethod(UTXOsManager.Abi.Methods["setDependencies"], buf, s)
+func (s *SetDependenciesUTXOscFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(UTXOsc.Abi.Methods["setDependencies"], buf, s)
 }
 
-type InitializeValidatorsContractFn struct {
+type InitializeValidatorsFn struct {
 	Validators []types.Address `abi:"_validators"`
 }
 
-func (i *InitializeValidatorsContractFn) Sig() []byte {
-	return ValidatorsContract.Abi.Methods["initialize"].ID()
+func (i *InitializeValidatorsFn) Sig() []byte {
+	return Validators.Abi.Methods["initialize"].ID()
 }
 
-func (i *InitializeValidatorsContractFn) EncodeAbi() ([]byte, error) {
-	return ValidatorsContract.Abi.Methods["initialize"].Encode(i)
+func (i *InitializeValidatorsFn) EncodeAbi() ([]byte, error) {
+	return Validators.Abi.Methods["initialize"].Encode(i)
 }
 
-func (i *InitializeValidatorsContractFn) DecodeAbi(buf []byte) error {
-	return decodeMethod(ValidatorsContract.Abi.Methods["initialize"], buf, i)
+func (i *InitializeValidatorsFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(Validators.Abi.Methods["initialize"], buf, i)
 }
 
-type SetDependenciesValidatorsContractFn struct {
+type SetDependenciesValidatorsFn struct {
 	BridgeAddress types.Address `abi:"_bridgeAddress"`
 }
 
-func (s *SetDependenciesValidatorsContractFn) Sig() []byte {
-	return ValidatorsContract.Abi.Methods["setDependencies"].ID()
+func (s *SetDependenciesValidatorsFn) Sig() []byte {
+	return Validators.Abi.Methods["setDependencies"].ID()
 }
 
-func (s *SetDependenciesValidatorsContractFn) EncodeAbi() ([]byte, error) {
-	return ValidatorsContract.Abi.Methods["setDependencies"].Encode(s)
+func (s *SetDependenciesValidatorsFn) EncodeAbi() ([]byte, error) {
+	return Validators.Abi.Methods["setDependencies"].Encode(s)
 }
 
-func (s *SetDependenciesValidatorsContractFn) DecodeAbi(buf []byte) error {
-	return decodeMethod(ValidatorsContract.Abi.Methods["setDependencies"], buf, s)
+func (s *SetDependenciesValidatorsFn) DecodeAbi(buf []byte) error {
+	return decodeMethod(Validators.Abi.Methods["setDependencies"], buf, s)
 }

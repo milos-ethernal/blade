@@ -480,9 +480,9 @@ func initApexProxies(transition *state.Transition, admin types.Address,
 func getDataForApexContract(contract types.Address, polyBFTConfig PolyBFTConfig) ([]byte, error) {
 	switch contract {
 	case contracts.Bridge:
-		return (&contractsapi.InitializeBridgeContractFn{}).EncodeAbi()
+		return (&contractsapi.InitializeBridgeFn{}).EncodeAbi()
 	case contracts.SignedBatches:
-		return (&contractsapi.InitializeSignedBatchManagerFn{}).EncodeAbi()
+		return (&contractsapi.InitializeSignedBatchesFn{}).EncodeAbi()
 	case contracts.ClaimsHelper:
 		return (&contractsapi.InitializeClaimsHelperFn{}).EncodeAbi()
 	case contracts.Validators:
@@ -491,18 +491,18 @@ func getDataForApexContract(contract types.Address, polyBFTConfig PolyBFTConfig)
 			validatorAddresses[i] = validator.Address
 		}
 
-		return (&contractsapi.InitializeValidatorsContractFn{
+		return (&contractsapi.InitializeValidatorsFn{
 			Validators: validatorAddresses,
 		}).EncodeAbi()
 	case contracts.Slots:
-		return (&contractsapi.InitializeSlotsManagerFn{}).EncodeAbi()
+		return (&contractsapi.InitializeSlotsFn{}).EncodeAbi()
 	case contracts.Claims:
-		return (&contractsapi.InitializeClaimsManagerFn{
+		return (&contractsapi.InitializeClaimsFn{
 			MaxNumberOfTransactions: 0, // APEX-TODO: Define
 			TimeoutBlocksNumber:     0,
 		}).EncodeAbi()
 	case contracts.UTXOsc:
-		return (&contractsapi.InitializeUTXOsManagerFn{}).EncodeAbi()
+		return (&contractsapi.InitializeUTXOscFn{}).EncodeAbi()
 	}
 
 	return nil, fmt.Errorf("No contract defined at address %v", contract)
@@ -510,9 +510,9 @@ func getDataForApexContract(contract types.Address, polyBFTConfig PolyBFTConfig)
 
 // Apex smart contracts initialization
 
-// initBridgeContract initializes BridgeContract and it's proxy SC
-func initBridgeContract(transition *state.Transition) error {
-	setDependenciesFn := &contractsapi.SetDependenciesBridgeContractFn{
+// initBridge initializes Bridge and it's proxy SC
+func initBridge(transition *state.Transition) error {
+	setDependenciesFn := &contractsapi.SetDependenciesBridgeFn{
 		ClaimsAddress:        contracts.Claims,
 		SignedBatchesAddress: contracts.SignedBatches,
 		SlotsAddress:         contracts.Slots,
@@ -522,16 +522,16 @@ func initBridgeContract(transition *state.Transition) error {
 
 	input, err := setDependenciesFn.EncodeAbi()
 	if err != nil {
-		return fmt.Errorf("BridgeContract.setDependencies params encoding failed: %w", err)
+		return fmt.Errorf("Bridge.setDependencies params encoding failed: %w", err)
 	}
 
 	return callContract(contracts.SystemCaller,
-		contracts.Bridge, input, "BridgeContract.setDependencies", transition)
+		contracts.Bridge, input, "Bridge.setDependencies", transition)
 }
 
-// initSignedBatchManager initializes SignedBatchManager SC
-func initSignedBatchManager(transition *state.Transition) error {
-	setDependenciesFn := &contractsapi.SetDependenciesSignedBatchManagerFn{
+// initSignedBatches initializes SignedBatches SC
+func initSignedBatches(transition *state.Transition) error {
+	setDependenciesFn := &contractsapi.SetDependenciesSignedBatchesFn{
 		BridgeAddress:       contracts.Bridge,
 		ClaimsHelperAddress: contracts.ClaimsHelper,
 		ValidatorsAddress:   contracts.Validators,
@@ -539,11 +539,11 @@ func initSignedBatchManager(transition *state.Transition) error {
 
 	input, err := setDependenciesFn.EncodeAbi()
 	if err != nil {
-		return fmt.Errorf("SignedBatchManager.setDependencies params encoding failed: %w", err)
+		return fmt.Errorf("SignedBatches.setDependencies params encoding failed: %w", err)
 	}
 
 	return callContract(contracts.SystemCaller,
-		contracts.SignedBatches, input, "SignedBatchManager.setDependencies", transition)
+		contracts.SignedBatches, input, "SignedBatches.setDependencies", transition)
 }
 
 // initClaimsHelper initializes ClaimsHelper SC
@@ -562,40 +562,40 @@ func initClaimsHelper(transition *state.Transition) error {
 		contracts.ClaimsHelper, input, "ClaimsHelper.setDependencies", transition)
 }
 
-// initValidatorsContract initializes ValidatorsContract SC
-func initValidatorsContract(transition *state.Transition) error {
-	setDependenciesFn := &contractsapi.SetDependenciesValidatorsContractFn{
+// initValidators initializes Validators SC
+func initValidators(transition *state.Transition) error {
+	setDependenciesFn := &contractsapi.SetDependenciesValidatorsFn{
 		BridgeAddress: contracts.Bridge,
 	}
 
 	input, err := setDependenciesFn.EncodeAbi()
 	if err != nil {
-		return fmt.Errorf("ValidatorsContract.setDependencies params encoding failed: %w", err)
+		return fmt.Errorf("Validators.setDependencies params encoding failed: %w", err)
 	}
 
 	return callContract(contracts.SystemCaller,
-		contracts.Validators, input, "ValidatorsContract.setDependencies", transition)
+		contracts.Validators, input, "Validators.setDependencies", transition)
 }
 
-// initSlotsManager initializes SlotsManager SC
-func initSlotsManager(transition *state.Transition) error {
-	setDependenciesFn := &contractsapi.SetDependenciesSlotsManagerFn{
+// initSlots initializes Slots SC
+func initSlots(transition *state.Transition) error {
+	setDependenciesFn := &contractsapi.SetDependenciesSlotsFn{
 		BridgeAddress:     contracts.Bridge,
 		ValidatorsAddress: contracts.Validators,
 	}
 
 	input, err := setDependenciesFn.EncodeAbi()
 	if err != nil {
-		return fmt.Errorf("SlotsManager.setDependencies params encoding failed: %w", err)
+		return fmt.Errorf("Slots.setDependencies params encoding failed: %w", err)
 	}
 
 	return callContract(contracts.SystemCaller,
-		contracts.Slots, input, "SlotsManager.setDependencies", transition)
+		contracts.Slots, input, "Slots.setDependencies", transition)
 }
 
-// initClaimsManager initializes ClaimsManager SC
-func initClaimsManager(transition *state.Transition) error {
-	setDependenciesFn := &contractsapi.SetDependenciesClaimsManagerFn{
+// initClaims initializes Claims SC
+func initClaims(transition *state.Transition) error {
+	setDependenciesFn := &contractsapi.SetDependenciesClaimsFn{
 		BridgeAddress:       contracts.Bridge,
 		ClaimsHelperAddress: contracts.ClaimsHelper,
 		Utxosc:              contracts.UTXOsc,
@@ -604,25 +604,25 @@ func initClaimsManager(transition *state.Transition) error {
 
 	input, err := setDependenciesFn.EncodeAbi()
 	if err != nil {
-		return fmt.Errorf("ClaimsManager.setDependencies params encoding failed: %w", err)
+		return fmt.Errorf("Claims.setDependencies params encoding failed: %w", err)
 	}
 
 	return callContract(contracts.SystemCaller,
-		contracts.Claims, input, "ClaimsManager.setDependencies", transition)
+		contracts.Claims, input, "Claims.setDependencies", transition)
 }
 
-// initUTXOsManager initializes UTXOsManager SC
-func initUTXOsManager(transition *state.Transition) error {
-	setDependenciesFn := &contractsapi.SetDependenciesUTXOsManagerFn{
+// initUTXOsc initializes UTXOsc SC
+func initUTXOsc(transition *state.Transition) error {
+	setDependenciesFn := &contractsapi.SetDependenciesUTXOscFn{
 		BridgeAddress: contracts.Bridge,
 		ClaimsAddress: contracts.Claims,
 	}
 
 	input, err := setDependenciesFn.EncodeAbi()
 	if err != nil {
-		return fmt.Errorf("UTXOsManager.setDependencies params encoding failed: %w", err)
+		return fmt.Errorf("UTXOsc.setDependencies params encoding failed: %w", err)
 	}
 
 	return callContract(contracts.SystemCaller,
-		contracts.UTXOsc, input, "UTXOsManager.setDependencies", transition)
+		contracts.UTXOsc, input, "UTXOsc.setDependencies", transition)
 }

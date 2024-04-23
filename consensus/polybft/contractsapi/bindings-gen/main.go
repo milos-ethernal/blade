@@ -565,8 +565,8 @@ import (
 		events              []string
 	}{
 		{
-			"BridgeContract",
-			gensc.BridgeContract,
+			"Bridge",
+			gensc.Bridge,
 			false,
 			[]string{
 				"initialize",
@@ -585,8 +585,8 @@ import (
 			[]string{},
 		},
 		{
-			"ClaimsManager",
-			gensc.ClaimsManager,
+			"Claims",
+			gensc.Claims,
 			false,
 			[]string{
 				"initialize",
@@ -595,8 +595,8 @@ import (
 			[]string{},
 		},
 		{
-			"SignedBatchManager",
-			gensc.SignedBatchManager,
+			"SignedBatches",
+			gensc.SignedBatches,
 			false,
 			[]string{
 				"initialize",
@@ -605,8 +605,8 @@ import (
 			[]string{},
 		},
 		{
-			"SlotsManager",
-			gensc.SlotsManager,
+			"Slots",
+			gensc.Slots,
 			false,
 			[]string{
 				"initialize",
@@ -615,8 +615,8 @@ import (
 			[]string{},
 		},
 		{
-			"UTXOsManager",
-			gensc.UTXOsManager,
+			"UTXOsc",
+			gensc.UTXOsc,
 			false,
 			[]string{
 				"initialize",
@@ -625,8 +625,8 @@ import (
 			[]string{},
 		},
 		{
-			"ValidatorsContract",
-			gensc.ValidatorsContract,
+			"Validators",
+			gensc.Validators,
 			false,
 			[]string{
 				"initialize",

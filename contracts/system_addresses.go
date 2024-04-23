@@ -111,36 +111,6 @@ var (
 	AllowListBridgeAddr = types.StringToAddress("0x0200000000000000000000000000000000000004")
 	// BlockListBridgeAddr is the address of the bridge block list
 	BlockListBridgeAddr = types.StringToAddress("0x0300000000000000000000000000000000000004")
-
-	// Apex contracts
-
-	// Address of Bridge proxy
-	Bridge     = types.StringToAddress("0x0400000000000000000000000000000000000000")
-	BridgeAddr = types.StringToAddress("0x0400000000000000000000000000000000000010")
-
-	// Address of ClaimsHelper proxy
-	ClaimsHelper     = types.StringToAddress("0x0400000000000000000000000000000000000001")
-	ClaimsHelperAddr = types.StringToAddress("0x0400000000000000000000000000000000000011")
-
-	// Address of Claims proxy
-	Claims     = types.StringToAddress("0x0400000000000000000000000000000000000002")
-	ClaimsAddr = types.StringToAddress("0x0400000000000000000000000000000000000012")
-
-	// Address of SignedBatches proxy
-	SignedBatches     = types.StringToAddress("0x0400000000000000000000000000000000000003")
-	SignedBatchesAddr = types.StringToAddress("0x0400000000000000000000000000000000000013")
-
-	// Address of Slots proxy
-	Slots     = types.StringToAddress("0x0400000000000000000000000000000000000004")
-	SlotsAddr = types.StringToAddress("0x0400000000000000000000000000000000000014")
-
-	// Address of UTXOsc proxy
-	UTXOsc     = types.StringToAddress("0x0400000000000000000000000000000000000005")
-	UTXOscAddr = types.StringToAddress("0x0400000000000000000000000000000000000015")
-
-	// Address of Validators proxy
-	Validators     = types.StringToAddress("0x0400000000000000000000000000000000000006")
-	ValidatorsAddr = types.StringToAddress("0x0400000000000000000000000000000000000016")
 )
 
 // GetProxyImplementationMapping retrieves the addresses of proxy contracts that should be deployed unconditionally
@@ -163,17 +133,5 @@ func GetProxyImplementationMapping() map[types.Address]types.Address {
 		ForkParamsContract:                   ForkParamsContractV1,
 		ChildTimelockContract:                ChildTimelockContractV1,
 		ChildGovernorContract:                ChildGovernorContractV1,
-	}
-}
-
-func GetApexProxyImplementationMapping() map[types.Address]types.Address {
-	return map[types.Address]types.Address{
-		Bridge:        BridgeAddr,
-		ClaimsHelper:  ClaimsHelperAddr,
-		Claims:        ClaimsAddr,
-		SignedBatches: SignedBatchesAddr,
-		Slots:         SlotsAddr,
-		UTXOsc:        UTXOscAddr,
-		Validators:    ValidatorsAddr,
 	}
 }
