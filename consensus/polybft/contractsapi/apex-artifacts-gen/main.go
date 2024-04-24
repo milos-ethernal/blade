@@ -86,7 +86,6 @@ package contractsapi
 	if err = common.SaveFileSafe(currentPath+"/../apex_sc_data.go", output, 0600); err != nil {
 		log.Fatal(err)
 	}
-
 }
 
 // getContractName extracts smart contract name from provided path

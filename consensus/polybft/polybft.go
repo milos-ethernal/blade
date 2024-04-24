@@ -203,7 +203,8 @@ func GenesisPostHookFactory(config *chain.Chain, engineName string) func(txn *st
 
 		// Initialize Apex proxies
 
-		if err = initApexProxies(transition, polyBFTConfig.ProxyContractsAdmin, contracts.GetApexProxyImplementationMapping(), polyBFTConfig); err != nil {
+		if err = initApexProxies(transition, polyBFTConfig.ProxyContractsAdmin,
+			contracts.GetApexProxyImplementationMapping(), polyBFTConfig); err != nil {
 			return err
 		}
 

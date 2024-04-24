@@ -492,6 +492,7 @@ func main() {
 		events              []string
 	}) *generatedData {
 		generatedData := &generatedData{}
+
 		for _, c := range contractsMetadata {
 			if c.generateConstructor {
 				if err := generateConstructor(generatedData, c.contractName, c.artifact.Abi.Constructor); err != nil {
@@ -528,6 +529,7 @@ func main() {
 				}
 			}
 		}
+
 		return generatedData
 	}
 

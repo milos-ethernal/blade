@@ -465,7 +465,7 @@ func initApexProxies(transition *state.Transition, admin types.Address,
 
 		proxyInput, err = setUpproxyFn.EncodeAbi()
 		if err != nil {
-			return fmt.Errorf("Apex GenesisProxy.setUpProxy params encoding failed: %w", err)
+			return fmt.Errorf("apex GenesisProxy.setUpProxy params encoding failed: %w", err)
 		}
 
 		err = callContract(contracts.SystemCaller, proxyAddress, proxyInput, "GenesisProxy.setUpProxy", transition)
@@ -486,7 +486,7 @@ func getDataForApexContract(contract types.Address, polyBFTConfig PolyBFTConfig)
 	case contracts.ClaimsHelper:
 		return (&contractsapi.InitializeClaimsHelperFn{}).EncodeAbi()
 	case contracts.Validators:
-		var validatorAddresses []types.Address = make([]types.Address, len(polyBFTConfig.InitialValidatorSet))
+		var validatorAddresses = make([]types.Address, len(polyBFTConfig.InitialValidatorSet))
 		for i, validator := range polyBFTConfig.InitialValidatorSet {
 			validatorAddresses[i] = validator.Address
 		}
@@ -505,7 +505,7 @@ func getDataForApexContract(contract types.Address, polyBFTConfig PolyBFTConfig)
 		return (&contractsapi.InitializeUTXOscFn{}).EncodeAbi()
 	}
 
-	return nil, fmt.Errorf("No contract defined at address %v", contract)
+	return nil, fmt.Errorf("no contract defined at address %v", contract)
 }
 
 // Apex smart contracts initialization
