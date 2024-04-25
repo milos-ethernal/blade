@@ -83,7 +83,8 @@ package contractsapi
 		log.Fatal(err)
 	}
 
-	if err = common.SaveFileSafe(path.Join(currentPath, "/../apex_sc_data.go"), output, 0600); err != nil {
+	if err = common.SaveFileSafe(path.Join(path.Dir(path.Clean(currentPath)),
+		"apex_sc_data.go"), output, 0600); err != nil {
 		log.Fatal(err)
 	}
 }
