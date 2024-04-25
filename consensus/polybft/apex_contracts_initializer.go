@@ -9,6 +9,47 @@ import (
 	"github.com/0xPolygon/polygon-edge/types"
 )
 
+func initApex(transition *state.Transition, admin types.Address,
+	proxyToImplMap map[types.Address]types.Address, polyBFTConfig PolyBFTConfig) (err error) {
+	// Initialize Apex proxies
+	if err = initApexProxies(transition, admin,
+		proxyToImplMap, polyBFTConfig); err != nil {
+		return err
+	}
+
+	// Initialize Apex contracts
+
+	if err = initBridge(transition); err != nil {
+		return err
+	}
+
+	if err = initSignedBatches(transition); err != nil {
+		return err
+	}
+
+	if err = initClaimsHelper(transition); err != nil {
+		return err
+	}
+
+	if err = initValidators(transition); err != nil {
+		return err
+	}
+
+	if err = initSlots(transition); err != nil {
+		return err
+	}
+
+	if err = initClaims(transition); err != nil {
+		return err
+	}
+
+	if err = initUTXOsc(transition); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // initProxies initializes proxy contracts, that allow upgradeability of contracts implementation
 func initApexProxies(transition *state.Transition, admin types.Address,
 	proxyToImplMap map[types.Address]types.Address, polyBFTConfig PolyBFTConfig) error {

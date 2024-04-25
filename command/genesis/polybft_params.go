@@ -374,11 +374,7 @@ func (p *genesisParams) deployContracts(rewardTokenByteCode []byte,
 		proxyAddresses = append(proxyAddresses, proxyAddr)
 	}
 
-	apexProxyToImplAddrMap := contracts.GetApexProxyImplementationMapping()
-
-	for proxyAddr := range apexProxyToImplAddrMap {
-		proxyAddresses = append(proxyAddresses, proxyAddr)
-	}
+	proxyAddresses = append(proxyAddresses, getApexProxyAddresses()...)
 
 	genesisContracts := []*contractInfo{
 		{
@@ -442,38 +438,7 @@ func (p *genesisParams) deployContracts(rewardTokenByteCode []byte,
 		},
 	}
 
-	apexContracts := []*contractInfo{
-		// Apex contracts
-		{
-			artifact: contractsapi.Bridge,
-			address:  contracts.BridgeAddr,
-		},
-		{
-			artifact: contractsapi.ClaimsHelper,
-			address:  contracts.ClaimsHelperAddr,
-		},
-		{
-			artifact: contractsapi.Claims,
-			address:  contracts.ClaimsAddr,
-		},
-		{
-			artifact: contractsapi.SignedBatches,
-			address:  contracts.SignedBatchesAddr,
-		},
-		{
-			artifact: contractsapi.Slots,
-			address:  contracts.SlotsAddr,
-		},
-		{
-			artifact: contractsapi.UTXOsc,
-			address:  contracts.UTXOscAddr,
-		},
-		{
-			artifact: contractsapi.Validators,
-			address:  contracts.ValidatorsAddr,
-		},
-	}
-	genesisContracts = append(genesisContracts, apexContracts...)
+	genesisContracts = append(genesisContracts, getApexContracts()...)
 
 	if !params.nativeTokenConfig.IsMintable {
 		genesisContracts = append(genesisContracts,

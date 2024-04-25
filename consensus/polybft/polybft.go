@@ -201,40 +201,9 @@ func GenesisPostHookFactory(config *chain.Chain, engineName string) func(txn *st
 			return err
 		}
 
-		// Initialize Apex proxies
-
-		if err = initApexProxies(transition, polyBFTConfig.ProxyContractsAdmin,
-			contracts.GetApexProxyImplementationMapping(), polyBFTConfig); err != nil {
-			return err
-		}
-
 		// Initialize Apex contracts
-
-		if err = initBridge(transition); err != nil {
-			return err
-		}
-
-		if err = initSignedBatches(transition); err != nil {
-			return err
-		}
-
-		if err = initClaimsHelper(transition); err != nil {
-			return err
-		}
-
-		if err = initValidators(transition); err != nil {
-			return err
-		}
-
-		if err = initSlots(transition); err != nil {
-			return err
-		}
-
-		if err = initClaims(transition); err != nil {
-			return err
-		}
-
-		if err = initUTXOsc(transition); err != nil {
+		if err = initApex(transition, polyBFTConfig.ProxyContractsAdmin,
+			contracts.GetApexProxyImplementationMapping(), polyBFTConfig); err != nil {
 			return err
 		}
 
