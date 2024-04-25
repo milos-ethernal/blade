@@ -9,11 +9,16 @@ import (
 	"github.com/0xPolygon/polygon-edge/types"
 )
 
+const (
+	maxNumberOfTransactions = 5
+	timeoutBlocksNumber     = 5
+)
+
 func initApex(transition *state.Transition, admin types.Address,
-	proxyToImplMap map[types.Address]types.Address, polyBFTConfig PolyBFTConfig) (err error) {
+	polyBFTConfig PolyBFTConfig) (err error) {
 	// Initialize Apex proxies
 	if err = initApexProxies(transition, admin,
-		proxyToImplMap, polyBFTConfig); err != nil {
+		contracts.GetApexProxyImplementationMapping(), polyBFTConfig); err != nil {
 		return err
 	}
 
@@ -112,8 +117,8 @@ func getDataForApexContract(contract types.Address, polyBFTConfig PolyBFTConfig)
 		return (&contractsapi.InitializeSlotsFn{}).EncodeAbi()
 	case contracts.Claims:
 		return (&contractsapi.InitializeClaimsFn{
-			MaxNumberOfTransactions: 0, // APEX-TODO: Define
-			TimeoutBlocksNumber:     0,
+			MaxNumberOfTransactions: maxNumberOfTransactions,
+			TimeoutBlocksNumber:     timeoutBlocksNumber,
 		}).EncodeAbi()
 	case contracts.UTXOsc:
 		return (&contractsapi.InitializeUTXOscFn{}).EncodeAbi()
