@@ -374,6 +374,8 @@ func (p *genesisParams) deployContracts(rewardTokenByteCode []byte,
 		proxyAddresses = append(proxyAddresses, proxyAddr)
 	}
 
+	proxyAddresses = append(proxyAddresses, getApexProxyAddresses()...)
+
 	genesisContracts := []*contractInfo{
 		{
 			// State receiver contract
@@ -435,6 +437,8 @@ func (p *genesisParams) deployContracts(rewardTokenByteCode []byte,
 			address:  contracts.ChildTimelockContractV1,
 		},
 	}
+
+	genesisContracts = append(genesisContracts, getApexContracts()...)
 
 	if !params.nativeTokenConfig.IsMintable {
 		genesisContracts = append(genesisContracts,
