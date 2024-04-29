@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -274,9 +275,10 @@ func (c *TestCardanoCluster) StopDocker() error {
 
 func (c *TestCardanoCluster) Stats(
 	ctx context.Context,
-) ([]cardano_wallet.QueryTipData, error) {
+) ([]cardano_wallet.QueryTipData, bool, error) {
 	result := make([]cardano_wallet.QueryTipData, len(c.Servers))
 	errs := make([]error, len(c.Servers))
+	ready := uint32(1)
 	wg := sync.WaitGroup{}
 
 	for i, srv := range c.Servers {
@@ -287,9 +289,14 @@ func (c *TestCardanoCluster) Stats(
 
 			tip, err := txProv.GetTip(ctx)
 			if err != nil {
-				errs[indx] = fmt.Errorf("error for provider %d: %w", indx, err)
-
 				c.Config.t.Log("query tip error", "indx", indx, "err", err)
+
+				if strings.Contains(err.Error(), "cardano-cli: Network.Socket.connect") &&
+					strings.Contains(err.Error(), "does not exist") {
+					atomic.StoreUint32(&ready, 0)
+				} else {
+					errs[indx] = fmt.Errorf("error for provider %d: %w", indx, err)
+				}
 
 				return
 			}
@@ -300,7 +307,7 @@ func (c *TestCardanoCluster) Stats(
 
 	wg.Wait()
 
-	return result, errors.Join(errs...)
+	return result, ready == uint32(1), errors.Join(errs...)
 }
 
 func (c *TestCardanoCluster) WaitUntil(timeout, frequency time.Duration, handler func() (bool, error)) error {
@@ -328,13 +335,23 @@ func (c *TestCardanoCluster) WaitUntil(timeout, frequency time.Duration, handler
 	}
 }
 
+func (c *TestCardanoCluster) WaitForReady(ctx context.Context, timeout time.Duration) error {
+	return c.WaitUntil(timeout, time.Second*2, func() (bool, error) {
+		_, ready, err := c.Stats(ctx)
+
+		return ready, err
+	})
+}
+
 func (c *TestCardanoCluster) WaitForBlock(
 	ctx context.Context, n uint64, timeout time.Duration, frequency time.Duration,
 ) error {
 	return c.WaitUntil(timeout, frequency, func() (bool, error) {
-		tips, err := c.Stats(ctx)
+		tips, ready, err := c.Stats(ctx)
 		if err != nil {
 			return false, err
+		} else if !ready {
+			return false, nil
 		}
 
 		c.Config.t.Log("WaitForBlock", "tips", tips)
@@ -356,9 +373,11 @@ func (c *TestCardanoCluster) WaitForBlockWithState(
 	blockState := make(map[uint64]map[int]string, len(c.Servers))
 
 	return c.WaitUntil(timeout, time.Millisecond*200, func() (bool, error) {
-		tips, err := c.Stats(ctx)
+		tips, ready, err := c.Stats(ctx)
 		if err != nil {
 			return false, err
+		} else if !ready {
+			return false, nil
 		}
 
 		c.Config.t.Log("WaitForBlockWithState", "tips", tips)
