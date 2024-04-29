@@ -241,7 +241,7 @@ func NewCardanoTestCluster(t *testing.T, opts ...CardanoClusterOption) (*TestCar
 		return nil, err
 	}
 
-	for i := 0; i < cluster.Config.NodesCount; i++ {
+	for i := 1; i <= cluster.Config.NodesCount; i++ {
 		id := cluster.Config.StartNodeID + i
 		port := cluster.Config.Port + i
 		socketPath := fmt.Sprintf("node-spo%d/node.socket", id)
@@ -257,6 +257,8 @@ func NewCardanoTestCluster(t *testing.T, opts ...CardanoClusterOption) (*TestCar
 	if err := cluster.GenerateDockerComposeFiles(); err != nil {
 		return nil, err
 	}
+
+	cluster.StartDocker()
 
 	return cluster, nil
 }
