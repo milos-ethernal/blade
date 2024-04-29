@@ -53,11 +53,15 @@ func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 				return
 			}
 
+			if errors[id] = cluster.StartDocker(); errors[id] != nil {
+				return
+			}
+
 			defer cluster.StopDocker() //nolint:errcheck
 
 			t.Log("Waiting for sockets to be ready")
 
-			if errors[id] = cluster.WaitForReady(context.Background(), time.Second*100); errors[id] != nil {
+			if errors[id] = cluster.WaitForReady(context.Background(), time.Second*300); errors[id] != nil {
 				return
 			}
 

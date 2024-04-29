@@ -258,8 +258,6 @@ func NewCardanoTestCluster(t *testing.T, opts ...CardanoClusterOption) (*TestCar
 		return nil, err
 	}
 
-	cluster.StartDocker()
-
 	return cluster, nil
 }
 
