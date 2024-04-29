@@ -26,6 +26,8 @@ type TestCardanoServer struct {
 }
 
 func NewCardanoTestServer(t *testing.T, config *TestCardanoServerConfig) (*TestCardanoServer, error) {
+	t.Helper()
+
 	if config.Binary == "" {
 		config.Binary = resolveCardanoNodeBinary()
 	}

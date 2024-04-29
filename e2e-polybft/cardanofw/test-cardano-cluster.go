@@ -48,7 +48,7 @@ func resolveCardanoCliBinary() string {
 type TestCardanoClusterConfig struct {
 	t *testing.T
 
-	Id             int
+	ID             int
 	NetworkMagic   int
 	SecurityParam  int
 	NodesCount     int
@@ -111,7 +111,7 @@ func (c *TestCardanoClusterConfig) GetStdout(name string, custom ...io.Writer) i
 
 func (c *TestCardanoClusterConfig) initLogsDir() error {
 	if c.LogsDir == "" {
-		logsDir := path.Join("../..", fmt.Sprintf("e2e-logs-cardano-%d", time.Now().Unix()), c.t.Name())
+		logsDir := path.Join("../..", fmt.Sprintf("e2e-logs-cardano-%d", time.Now().UTC().Unix()), c.t.Name())
 		if err := common.CreateDirSafe(logsDir, 0750); err != nil {
 			return err
 		}
@@ -170,14 +170,15 @@ func WithNetworkMagic(networkMagic int) CardanoClusterOption {
 	}
 }
 
-func WithId(id int) CardanoClusterOption {
+func WithID(id int) CardanoClusterOption {
 	return func(h *TestCardanoClusterConfig) {
-		h.Id = id
+		h.ID = id
 	}
 }
 
 func NewCardanoTestCluster(t *testing.T, opts ...CardanoClusterOption) (*TestCardanoCluster, error) {
-	//var err error
+	t.Helper()
+	// var err error
 
 	config := &TestCardanoClusterConfig{
 		t:          t,
@@ -200,12 +201,14 @@ func NewCardanoTestCluster(t *testing.T, opts ...CardanoClusterOption) (*TestCar
 		opt(config)
 	}
 
-	clusterName := fmt.Sprintf("cluster-%d", config.Id)
+	clusterName := fmt.Sprintf("cluster-%d", config.ID)
 	config.TmpDir = path.Join("../../e2e-docker-tmp", clusterName)
+
 	err := os.RemoveAll(config.TmpDir)
 	if err != nil {
 		return nil, err
 	}
+
 	if err := common.CreateDirSafe(config.TmpDir, 0750); err != nil {
 		return nil, err
 	}
@@ -241,7 +244,7 @@ func NewCardanoTestCluster(t *testing.T, opts ...CardanoClusterOption) (*TestCar
 		return nil, err
 	}
 
-	cluster.StartDocker()
+	_ = cluster.StartDocker()
 
 	return cluster, nil
 }
@@ -275,6 +278,7 @@ func (c *TestCardanoCluster) StopDocker() error {
 }
 
 func (c *TestCardanoCluster) NewTestServer(t *testing.T, id int, port int) error {
+	t.Helper()
 
 	srv, err := NewCardanoTestServer(t, &TestCardanoServerConfig{
 		ID:         id,
@@ -313,7 +317,7 @@ func (c *TestCardanoCluster) Fail(err error) {
 func (c *TestCardanoCluster) Stop() {
 	for _, srv := range c.Servers {
 		if srv.IsRunning() {
-			srv.Stop()
+			_ = srv.Stop()
 		}
 	}
 }
@@ -350,6 +354,7 @@ func (c *TestCardanoCluster) Stats() ([]*TestCardanoStats, bool, error) {
 		}
 
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
 
@@ -363,7 +368,8 @@ func (c *TestCardanoCluster) Stats() ([]*TestCardanoStats, bool, error) {
 			}
 
 			if err := c.runCommand(c.Config.Binary, args, stdOut); err != nil {
-				if strings.Contains(err.Error(), "Network.Socket.connect") && strings.Contains(err.Error(), "does not exist (No such file or directory)") {
+				if strings.Contains(err.Error(), "Network.Socket.connect") &&
+					strings.Contains(err.Error(), "does not exist (No such file or directory)") {
 					c.Config.t.Log("socket error", "path", srv.SocketPath(), "err", err)
 
 					return
@@ -376,7 +382,6 @@ func (c *TestCardanoCluster) Stats() ([]*TestCardanoStats, bool, error) {
 
 			stat, err := NewTestCardanoStats(b.Bytes())
 			if err != nil {
-
 				ready[id], errors[id] = true, err
 			}
 
@@ -509,6 +514,7 @@ func (c *TestCardanoCluster) runCommand(binary string, args []string, stdout io.
 	cmd := exec.Command(binary, args...)
 	cmd.Stderr = &stdErr
 	cmd.Stdout = stdout
+
 	cmd.Env = append(os.Environ(), envVariables...)
 	// fmt.Printf("$ %s %s\n", binary, strings.Join(args, " "))
 
@@ -535,7 +541,7 @@ func (c *TestCardanoCluster) InitGenesis(startTime int64) error {
 		return err
 	}
 
-	fnContent, err = updateJson(fnContent, func(mp map[string]interface{}) {
+	fnContent, err = updateJSON(fnContent, func(mp map[string]interface{}) {
 		mp["slotDuration"] = strconv.Itoa(c.Config.BlockTimeMilis)
 	})
 	if err != nil {
@@ -543,7 +549,7 @@ func (c *TestCardanoCluster) InitGenesis(startTime int64) error {
 	}
 
 	protParamsFile := c.Config.Dir("byron.genesis.spec.json")
-	if err := os.WriteFile(protParamsFile, fnContent, 0644); err != nil {
+	if err := os.WriteFile(protParamsFile, fnContent, 0600); err != nil {
 		return err
 	}
 
@@ -579,7 +585,7 @@ func (c *TestCardanoCluster) CopyConfigFilesStep1() error {
 		}
 
 		protParamsFile := c.Config.Dir(it[1])
-		if err := os.WriteFile(protParamsFile, fnContent, 0644); err != nil {
+		if err := os.WriteFile(protParamsFile, fnContent, 0600); err != nil {
 			return err
 		}
 	}
@@ -596,7 +602,7 @@ func (c *TestCardanoCluster) CopyConfigFilesAndInitDirectoriesStep2() error {
 		return err
 	}
 
-	err := updateJsonFile(
+	err := updateJSONFile(
 		c.Config.Dir("byron-gen-command/genesis.json"),
 		c.Config.Dir("genesis/byron/genesis.json"),
 		func(mp map[string]interface{}) {
@@ -606,7 +612,7 @@ func (c *TestCardanoCluster) CopyConfigFilesAndInitDirectoriesStep2() error {
 		return err
 	}
 
-	err = updateJsonFile(
+	err = updateJSONFile(
 		c.Config.Dir("genesis.json"),
 		c.Config.Dir("genesis/shelley/genesis.json"),
 		func(mp map[string]interface{}) {
@@ -629,11 +635,17 @@ func (c *TestCardanoCluster) CopyConfigFilesAndInitDirectoriesStep2() error {
 		return err
 	}
 
-	if err := os.Rename(c.Config.Dir("genesis.alonzo.json"), c.Config.Dir("genesis/shelley/genesis.alonzo.json")); err != nil {
+	if err := os.Rename(
+		c.Config.Dir("genesis.alonzo.json"),
+		c.Config.Dir("genesis/shelley/genesis.alonzo.json"),
+	); err != nil {
 		return err
 	}
 
-	if err := os.Rename(c.Config.Dir("genesis.conway.json"), c.Config.Dir("genesis/shelley/genesis.conway.json")); err != nil {
+	if err := os.Rename(
+		c.Config.Dir("genesis.conway.json"),
+		c.Config.Dir("genesis/shelley/genesis.conway.json"),
+	); err != nil {
 		return err
 	}
 
@@ -644,24 +656,29 @@ func (c *TestCardanoCluster) CopyConfigFilesAndInitDirectoriesStep2() error {
 		}
 
 		producers := make([]map[string]interface{}, 0, c.Config.NodesCount-1)
+
 		for pid := 0; pid < c.Config.NodesCount; pid++ {
 			if i != pid {
 				producers = append(producers, map[string]interface{}{
-					"addr":    fmt.Sprintf(hostIP, c.Config.Id, pid),
+					"addr":    fmt.Sprintf(hostIP, c.Config.ID, pid),
 					"valency": 1,
 					"port":    c.Config.Port + pid,
 				})
 			}
 		}
 
-		topologyJsonContent, err := json.MarshalIndent(map[string]interface{}{
+		topologyJSONContent, err := json.MarshalIndent(map[string]interface{}{
 			"Producers": producers,
 		}, "", "    ")
 		if err != nil {
 			return err
 		}
 
-		if err := os.WriteFile(c.Config.Dir(fmt.Sprintf("node-spo%d/topology.json", nodeID)), topologyJsonContent, 0644); err != nil {
+		if err := os.WriteFile(
+			c.Config.Dir(fmt.Sprintf("node-spo%d/topology.json", nodeID)),
+			topologyJSONContent,
+			0600,
+		); err != nil {
 			return err
 		}
 
@@ -712,34 +729,36 @@ func (c *TestCardanoCluster) GenerateDockerComposeFiles() error {
 
 	writer := bufio.NewWriter(file)
 
-	writer.WriteString("version: \"3.9\"\n\n")
-	writer.WriteString("services:\n")
+	_, _ = writer.WriteString("version: \"3.9\"\n\n")
+	_, _ = writer.WriteString("services:\n")
+
 	for node := 1; node <= c.Config.NodesCount; node++ {
-		writer.WriteString(fmt.Sprintf("  cluster-%d-node-%d:\n", c.Config.Id, node))
-		writer.WriteString("    image: ghcr.io/intersectmbo/cardano-node:8.7.3\n")
-		writer.WriteString("    environment:\n")
-		writer.WriteString("      - CARDANO_BLOCK_PRODUCER=true\n")
-		writer.WriteString("      - CARDANO_CONFIG=/node-data/configuration.yaml\n")
-		writer.WriteString(fmt.Sprintf("      - CARDANO_TOPOLOGY=/node-data/node-spo%d/topology.json\n", node))
-		writer.WriteString(fmt.Sprintf("      - CARDANO_DATABASE_PATH=/node-data/node-spo%d/db\n", node))
-		writer.WriteString(fmt.Sprintf("      - CARDANO_SOCKET_PATH=/node-data/node-spo%d/node.socket\n", node))
-		writer.WriteString(fmt.Sprintf("      - CARDANO_SHELLEY_KES_KEY=/node-data/node-spo%d/kes.skey\n", node))
-		writer.WriteString(fmt.Sprintf("      - CARDANO_SHELLEY_VRF_KEY=/node-data/node-spo%d/vrf.skey\n", node))
-		writer.WriteString(fmt.Sprintf("      - CARDANO_SHELLEY_OPERATIONAL_CERTIFICATE=/node-data/node-spo%d/opcert.cert\n", node))
-		writer.WriteString(fmt.Sprintf("      - CARDANO_LOG_DIR=/node-data/node-spo%d/node.log\n", node))
-		writer.WriteString("      - CARDANO_BIND_ADDR=0.0.0.0\n")
-		writer.WriteString("      - CARDANO_PORT=7532\n")
-		writer.WriteString("    command:\n")
-		writer.WriteString("      - run\n")
-		writer.WriteString("    volumes:\n")
-		writer.WriteString(fmt.Sprintf("      - %s:/node-data\n", c.Config.Dir("")))
-		writer.WriteString("    restart: on-failure\n")
-		writer.WriteString("    logging:\n")
-		writer.WriteString("      driver: \"json-file\"\n")
-		writer.WriteString("      options:\n")
-		writer.WriteString("        max-size: \"200k\"\n")
-		writer.WriteString("        max-file: \"10\"\n")
-		writer.WriteString("\n")
+		_, _ = writer.WriteString(fmt.Sprintf("  cluster-%d-node-%d:\n", c.Config.ID, node))
+		_, _ = writer.WriteString("    image: ghcr.io/intersectmbo/cardano-node:8.7.3\n")
+		_, _ = writer.WriteString("    environment:\n")
+		_, _ = writer.WriteString("      - CARDANO_BLOCK_PRODUCER=true\n")
+		_, _ = writer.WriteString("      - CARDANO_CONFIG=/node-data/configuration.yaml\n")
+		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_TOPOLOGY=/node-data/node-spo%d/topology.json\n", node))
+		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_DATABASE_PATH=/node-data/node-spo%d/db\n", node))
+		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_SOCKET_PATH=/node-data/node-spo%d/node.socket\n", node))
+		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_SHELLEY_KES_KEY=/node-data/node-spo%d/kes.skey\n", node))
+		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_SHELLEY_VRF_KEY=/node-data/node-spo%d/vrf.skey\n", node))
+		_, _ = writer.WriteString(
+			fmt.Sprintf("      - CARDANO_SHELLEY_OPERATIONAL_CERTIFICATE=/node-data/node-spo%d/opcert.cert\n", node))
+		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_LOG_DIR=/node-data/node-spo%d/node.log\n", node))
+		_, _ = writer.WriteString("      - CARDANO_BIND_ADDR=0.0.0.0\n")
+		_, _ = writer.WriteString("      - CARDANO_PORT=7532\n")
+		_, _ = writer.WriteString("    command:\n")
+		_, _ = writer.WriteString("      - run\n")
+		_, _ = writer.WriteString("    volumes:\n")
+		_, _ = writer.WriteString(fmt.Sprintf("      - %s:/node-data\n", c.Config.Dir("")))
+		_, _ = writer.WriteString("    restart: on-failure\n")
+		_, _ = writer.WriteString("    logging:\n")
+		_, _ = writer.WriteString("      driver: \"json-file\"\n")
+		_, _ = writer.WriteString("      options:\n")
+		_, _ = writer.WriteString("        max-size: \"200k\"\n")
+		_, _ = writer.WriteString("        max-file: \"10\"\n")
+		_, _ = writer.WriteString("\n")
 	}
 
 	err = writer.Flush()
@@ -755,7 +774,8 @@ func (c *TestCardanoCluster) GenerateDockerComposeFiles() error {
 func (c *TestCardanoCluster) GenesisCreateStaked(startTime time.Time) error {
 	var b bytes.Buffer
 
-	exprectedErr := fmt.Sprintf("%d genesis keys, %d non-delegating UTxO keys, %d stake pools, %d delegating UTxO keys, %d delegation map entries",
+	exprectedErr := fmt.Sprintf(
+		"%d genesis keys, %d non-delegating UTxO keys, %d stake pools, %d delegating UTxO keys, %d delegation map entries",
 		c.Config.NodesCount, c.Config.NodesCount, c.Config.NodesCount, c.Config.NodesCount, c.Config.NodesCount)
 	args := []string{
 		"genesis", "create-staked",
@@ -791,7 +811,7 @@ func (c *TestCardanoCluster) RunningServersCount() int {
 	return cnt
 }
 
-func updateJson(content []byte, callback func(mp map[string]interface{})) ([]byte, error) {
+func updateJSON(content []byte, callback func(mp map[string]interface{})) ([]byte, error) {
 	// Parse []byte into a map
 	var data map[string]interface{}
 	if err := json.Unmarshal(content, &data); err != nil {
@@ -803,18 +823,18 @@ func updateJson(content []byte, callback func(mp map[string]interface{})) ([]byt
 	return json.MarshalIndent(data, "", "    ") // The second argument is the prefix, and the third is the indentation
 }
 
-func updateJsonFile(fn1 string, fn2 string, callback func(mp map[string]interface{})) error {
+func updateJSONFile(fn1 string, fn2 string, callback func(mp map[string]interface{})) error {
 	bytes, err := os.ReadFile(fn1)
 	if err != nil {
 		return err
 	}
 
-	bytes, err = updateJson(bytes, callback)
+	bytes, err = updateJSON(bytes, callback)
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(fn2, bytes, 0644)
+	return os.WriteFile(fn2, bytes, 0600)
 }
 
 func getMapFromInterfaceKey(mp map[string]interface{}, key string) map[string]interface{} {
@@ -824,7 +844,7 @@ func getMapFromInterfaceKey(mp map[string]interface{}, key string) map[string]in
 		prParams = map[string]interface{}{}
 		mp[key] = prParams
 	} else {
-		prParams = v.(map[string]interface{})
+		prParams, _ = v.(map[string]interface{})
 	}
 
 	return prParams

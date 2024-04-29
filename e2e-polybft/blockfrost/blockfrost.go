@@ -19,7 +19,7 @@ import (
 )
 
 type BlockFrost struct {
-	Id          int
+	ID          int
 	RootDir     string
 	ClusterName string
 }
@@ -27,16 +27,18 @@ type BlockFrost struct {
 type PostgresConfig struct {
 	User     string
 	Password string
-	Db       string
+	DB       string
 }
 
 func NewBlockFrost(cluster *cardanofw.TestCardanoCluster, id int) (*BlockFrost, error) {
 	clusterName := fmt.Sprintf("cluster-%d-blockfrost", id)
 	dockerDir := path.Join("../../e2e-docker-tmp", clusterName)
+
 	err := os.RemoveAll(dockerDir)
 	if err != nil {
 		return nil, err
 	}
+
 	if err := common.CreateDirSafe(dockerDir, 0750); err != nil {
 		return nil, err
 	}
@@ -59,13 +61,13 @@ func NewBlockFrost(cluster *cardanofw.TestCardanoCluster, id int) (*BlockFrost, 
 		return nil, err
 	}
 
-	err = resolveDockerCompose(dockerDir, postgresPort, blockfrostPort, cluster.Config.Id)
+	err = resolveDockerCompose(dockerDir, postgresPort, blockfrostPort, cluster.Config.ID)
 	if err != nil {
 		return nil, err
 	}
 
 	return &BlockFrost{
-		Id:          id,
+		ID:          id,
 		RootDir:     dockerDir,
 		ClusterName: clusterName,
 	}, nil
@@ -74,7 +76,7 @@ func NewBlockFrost(cluster *cardanofw.TestCardanoCluster, id int) (*BlockFrost, 
 func (bf *BlockFrost) Start() error {
 	dockerFile := filepath.Join(bf.RootDir, "docker-compose.yml")
 
-	runCommand("docker-compose", []string{"-f", dockerFile, "up", "-d"})
+	_, _ = runCommand("docker-compose", []string{"-f", dockerFile, "up", "-d"})
 
 	return nil
 }
@@ -82,10 +84,10 @@ func (bf *BlockFrost) Start() error {
 func (bf *BlockFrost) Stop() error {
 	dockerFile := filepath.Join(bf.RootDir, "docker-compose.yml")
 
-	runCommand("docker-compose", []string{"-f", dockerFile, "down"})
+	_, _ = runCommand("docker-compose", []string{"-f", dockerFile, "down"})
 
 	// remove volumes
-	runCommand("docker", []string{"volume", "rm",
+	_, _ = runCommand("docker", []string{"volume", "rm",
 		fmt.Sprintf("%s_db-sync-data", bf.ClusterName),
 		fmt.Sprintf("%s_postgres", bf.ClusterName)})
 
@@ -101,17 +103,17 @@ func resolvePostgresFiles(dockerDir string) error {
 	postgresConfig := getPostgresConfig()
 
 	dbFile := filepath.Join(secretsPath, "postgres_db")
-	if err := os.WriteFile(dbFile, []byte(postgresConfig.Db), 0644); err != nil {
+	if err := os.WriteFile(dbFile, []byte(postgresConfig.DB), 0600); err != nil {
 		return err
 	}
 
 	pwFile := filepath.Join(secretsPath, "postgres_password")
-	if err := os.WriteFile(pwFile, []byte(postgresConfig.Password), 0644); err != nil {
+	if err := os.WriteFile(pwFile, []byte(postgresConfig.Password), 0600); err != nil {
 		return err
 	}
 
 	userFile := filepath.Join(secretsPath, "postgres_user")
-	if err := os.WriteFile(userFile, []byte(postgresConfig.User), 0644); err != nil {
+	if err := os.WriteFile(userFile, []byte(postgresConfig.User), 0600); err != nil {
 		return err
 	}
 
@@ -126,7 +128,7 @@ func resolveGenesisFiles(rootDir string, dockerDir string) error {
 		return err
 	}
 
-	copyDirectory(nodeGenesis, dockerGenesis)
+	_ = copyDirectory(nodeGenesis, dockerGenesis)
 
 	return nil
 }
@@ -145,56 +147,87 @@ func resolveConfigFiles(rootDir string, dockerDir string) error {
 
 	dbsyncConfigSrc := "../blockfrost/docker-files/dbsync_config.json"
 	dbsyncConfig := filepath.Join(dbsyncPath, "config.json")
-	copyFile(dbsyncConfigSrc, dbsyncConfig)
+
+	_ = copyFile(dbsyncConfigSrc, dbsyncConfig)
 
 	nodeConfigSrc := "../blockfrost/docker-files/node_config.yaml"
 	nodeConfig := filepath.Join(dbsyncPath, "config.yaml")
-	copyFile(nodeConfigSrc, nodeConfig)
+
+	_ = copyFile(nodeConfigSrc, nodeConfig)
 	// replaceLine(nodeConfig, "hasEKG: 12788", fmt.Sprintf("hasEKG: %d", ekgPort))
 
 	byronGenesis := filepath.Join(rootDir, "genesis/byron/genesis.json")
-	byronHash, err := runCommand("cardano-cli", []string{"byron", "genesis", "print-genesis-hash", "--genesis-json", byronGenesis})
+
+	byronHash, err := runCommand(
+		"cardano-cli",
+		[]string{"byron", "genesis", "print-genesis-hash", "--genesis-json", byronGenesis},
+	)
 	if err != nil {
 		return err
 	}
+
 	appendToFile(nodeConfig, fmt.Sprintf("ByronGenesisHash: %s", byronHash))
 
 	shelleyGenesis := filepath.Join(rootDir, "genesis/shelley/genesis.json")
+
 	shelleyHash, err := runCommand("cardano-cli", []string{"shelley", "genesis", "hash", "--genesis", shelleyGenesis})
 	if err != nil {
 		return err
 	}
+
 	appendToFile(nodeConfig, fmt.Sprintf("ShelleyGenesisHash: %s", shelleyHash))
 
 	alonzoGenesis := filepath.Join(rootDir, "genesis/shelley/genesis.alonzo.json")
+
 	alonzoHash, err := runCommand("cardano-cli", []string{"alonzo", "genesis", "hash", "--genesis", alonzoGenesis})
 	if err != nil {
 		return err
 	}
+
 	appendToFile(nodeConfig, fmt.Sprintf("AlonzoGenesisHash: %s", alonzoHash))
 
 	conwayGenesis := filepath.Join(rootDir, "genesis/shelley/genesis.conway.json")
+
 	conwayHash, err := runCommand("cardano-cli", []string{"conway", "genesis", "hash", "--genesis", conwayGenesis})
 	if err != nil {
 		return err
 	}
+
 	appendToFile(nodeConfig, fmt.Sprintf("ConwayGenesisHash: %s", conwayHash))
 
 	return nil
 }
 
-func resolveDockerCompose(dockerDir string, postgresPort int, blockfrostPort int, clusterId int) error {
+func resolveDockerCompose(dockerDir string, postgresPort int, blockfrostPort int, clusterID int) error {
 	dockerFileSrc := "../blockfrost/docker-files/docker-compose.yml"
 	dockerFile := filepath.Join(dockerDir, "docker-compose.yml")
-	copyFile(dockerFileSrc, dockerFile)
 
-	replaceLine(dockerFile, "      - ../../e2e-docker-tmp/cluster-1:/node-data", fmt.Sprintf("      - ../../e2e-docker-tmp/cluster-%d:/node-data", clusterId))
+	_ = copyFile(dockerFileSrc, dockerFile)
 
-	replaceLine(dockerFile, "      - ${POSTGRES_PORT:-5432}:5432", fmt.Sprintf("      - ${POSTGRES_PORT:-%d}:5432", postgresPort))
+	_ = replaceLine(
+		dockerFile,
+		"      - ../../e2e-docker-tmp/cluster-1:/node-data",
+		fmt.Sprintf("      - ../../e2e-docker-tmp/cluster-%d:/node-data", clusterID),
+	)
+
+	_ = replaceLine(
+		dockerFile,
+		"      - ${POSTGRES_PORT:-5432}:5432",
+		fmt.Sprintf("      - ${POSTGRES_PORT:-%d}:5432", postgresPort),
+	)
 	// replaceLine(dockerFile, "      - POSTGRES_PORT=5432", fmt.Sprintf("      - POSTGRES_PORT=%d", postgresPort))
 
-	replaceLine(dockerFile, "      - ${POSTGRES_PORT:-3000}:3000", fmt.Sprintf("      - ${POSTGRES_PORT:-%d}:%d", blockfrostPort, blockfrostPort))
-	replaceLine(dockerFile, "      - BLOCKFROST_CONFIG_SERVER_PORT=3000", fmt.Sprintf("      - BLOCKFROST_CONFIG_SERVER_PORT=%d", blockfrostPort))
+	_ = replaceLine(
+		dockerFile,
+		"      - ${POSTGRES_PORT:-3000}:3000",
+		fmt.Sprintf("      - ${POSTGRES_PORT:-%d}:%d", blockfrostPort, blockfrostPort),
+	)
+
+	_ = replaceLine(
+		dockerFile,
+		"      - BLOCKFROST_CONFIG_SERVER_PORT=3000",
+		fmt.Sprintf("      - BLOCKFROST_CONFIG_SERVER_PORT=%d", blockfrostPort),
+	)
 
 	return nil
 }
@@ -217,6 +250,7 @@ func GetTopology(topologyFile string) (string, error) {
 }`
 
 	topology := fmt.Sprintf(topologyBase, port)
+
 	return topology, nil
 }
 
@@ -242,7 +276,7 @@ func getPostgresConfig() *PostgresConfig {
 	return &PostgresConfig{
 		User:     user,
 		Password: password,
-		Db:       dbName,
+		DB:       dbName,
 	}
 }
 
@@ -251,6 +285,7 @@ func GetFirstPortFromTopologyFile(topologyFile string) (string, error) {
 	file, err := os.Open(topologyFile)
 	if err != nil {
 		fmt.Println("Error opening file:", err)
+
 		return "", nil
 	}
 	defer file.Close()
@@ -263,12 +298,14 @@ func GetFirstPortFromTopologyFile(topologyFile string) (string, error) {
 			parts := strings.Split(line, ":")
 			if len(parts) >= 2 {
 				port := strings.TrimSpace(strings.Trim(parts[1], ","))
+
 				return port, nil
 			}
 		}
 	}
 
 	err = scanner.Err()
+
 	return "", err
 }
 
@@ -304,10 +341,11 @@ func copyDirectory(srcDir, dstDir string) error {
 		dstFile := filepath.Join(dstDir, file.Name())
 
 		if file.IsDir() {
-			err = os.MkdirAll(dstFile, os.ModePerm)
+			err = os.MkdirAll(dstFile, 0770)
 			if err != nil {
 				return err
 			}
+
 			err = copyDirectory(srcFile, dstFile)
 			if err != nil {
 				return err
@@ -328,6 +366,7 @@ func appendToFile(filePath string, line string) {
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Println("Error opening file:", err)
+
 		return
 	}
 	defer file.Close()
@@ -339,6 +378,7 @@ func appendToFile(filePath string, line string) {
 	_, err = writer.WriteString(line)
 	if err != nil {
 		fmt.Println("Error writing to file:", err)
+
 		return
 	}
 
@@ -346,6 +386,7 @@ func appendToFile(filePath string, line string) {
 	err = writer.Flush()
 	if err != nil {
 		fmt.Println("Error flushing writer:", err)
+
 		return
 	}
 }
@@ -369,7 +410,8 @@ func replaceLine(filePath string, search string, replace string) error {
 		if strings.Contains(line, search) {
 			line = strings.Replace(line, search, replace, 1)
 		}
-		tempFile.WriteString(line + "\n")
+
+		_, _ = tempFile.WriteString(line + "\n")
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -392,9 +434,11 @@ func runCommand(binary string, args []string, envVariables ...string) (string, e
 	cmd := exec.Command(binary, args...)
 	cmd.Stderr = &stdErrBuffer
 	cmd.Stdout = &stdOutBuffer
+
 	cmd.Env = append(os.Environ(), envVariables...)
 
 	err := cmd.Run()
+
 	if stdErrBuffer.Len() > 0 {
 		return "", errors.New(stdErrBuffer.String())
 	} else if err != nil {
@@ -404,9 +448,11 @@ func runCommand(binary string, args []string, envVariables ...string) (string, e
 	return stdOutBuffer.String(), nil
 }
 
-func ResetDbSync(startAfter int) error {
+func ResetDBSync(startAfter int) error {
 	time.Sleep(time.Duration(startAfter) * time.Second)
+
 	found := false
+
 	var wg sync.WaitGroup
 
 	for !found {
@@ -428,6 +474,7 @@ func ResetDbSync(startAfter int) error {
 			}
 
 			wg.Add(1)
+
 			containerName := cName
 
 			go func() {
@@ -440,8 +487,11 @@ func ResetDbSync(startAfter int) error {
 
 					if strings.Contains(lastLog, "Creating Indexes. This may take a while.") {
 						args := []string{"restart", containerName}
-						runCommand("docker", args)
+
+						_, _ = runCommand("docker", args)
+
 						i = 0
+
 						continue
 					}
 
@@ -449,6 +499,7 @@ func ResetDbSync(startAfter int) error {
 				}
 
 				wg.Done()
+
 				_ = args
 			}()
 		}

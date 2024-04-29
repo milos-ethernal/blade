@@ -25,13 +25,14 @@ func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 	var (
 		errors      [clusterCnt]error
 		wg          sync.WaitGroup
-		baseLogsDir string = path.Join("../..", fmt.Sprintf("e2e-logs-cardano-%d", time.Now().Unix()), t.Name())
+		baseLogsDir = path.Join("../..", fmt.Sprintf("e2e-logs-cardano-%d", time.Now().UTC().Unix()), t.Name())
 	)
 
-	go blockfrost.ResetDbSync(15)
+	go blockfrost.ResetDBSync(15) //nolint:errcheck
 
 	for i := 0; i < clusterCnt; i++ {
 		id := i
+
 		wg.Add(1)
 
 		go func() {
@@ -45,7 +46,7 @@ func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 			}
 
 			cluster, err := cardanofw.NewCardanoTestCluster(t,
-				cardanofw.WithId(id+1),
+				cardanofw.WithID(id+1),
 				cardanofw.WithNodesCount(4),
 				cardanofw.WithStartTimeDelay(time.Second*5),
 				cardanofw.WithPort(5000+id*100),
@@ -57,9 +58,10 @@ func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 				return
 			}
 
-			defer cluster.StopDocker()
+			defer cluster.StopDocker() //nolint:errcheck
 
 			t.Log("Waiting for sockets to be ready", "id", id+1, "sockets", strings.Join(cluster.GetSockets(), ", "))
+
 			if errors[id] = cluster.WaitForReady(time.Second * 100); errors[id] != nil {
 				return
 			}
@@ -67,9 +69,11 @@ func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 			t.Log("Waiting for blocks", "id", id+1)
 
 			t.Log("starting blockfrost")
+
 			bf, err := blockfrost.NewBlockFrost(cluster, id+1)
 			if err != nil {
 				errors[id] = err
+
 				return
 			}
 
@@ -77,7 +81,7 @@ func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 				return
 			}
 
-			defer bf.Stop()
+			defer bf.Stop() //nolint:errcheck
 
 			errors[id] = cluster.WaitForBlockWithState(10, time.Second*300)
 		}()
