@@ -241,10 +241,6 @@ func NewCardanoTestCluster(t *testing.T, opts ...CardanoClusterOption) (*TestCar
 		return nil, err
 	}
 
-	if err := cluster.GenerateDockerComposeFiles(); err != nil {
-		return nil, err
-	}
-
 	for i := 0; i < cluster.Config.NodesCount; i++ {
 		id := cluster.Config.StartNodeID + i
 		port := cluster.Config.Port + i
@@ -256,6 +252,10 @@ func NewCardanoTestCluster(t *testing.T, opts ...CardanoClusterOption) (*TestCar
 		}
 
 		cluster.Servers = append(cluster.Servers, server)
+	}
+
+	if err := cluster.GenerateDockerComposeFiles(); err != nil {
+		return nil, err
 	}
 
 	return cluster, nil

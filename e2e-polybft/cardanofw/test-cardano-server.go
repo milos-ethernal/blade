@@ -17,7 +17,9 @@ type TestCardanoServer struct {
 func NewCardanoTestServer(
 	id int, port int, networkMagic uint, socketPathPrefix string, socketPath string,
 ) (*TestCardanoServer, error) {
-	txProvider, err := cardano_wallet.NewTxProviderCli(networkMagic, path.Join(socketPathPrefix, socketPath))
+	fullPath := path.Join(socketPathPrefix, socketPath)
+
+	txProvider, err := cardano_wallet.NewTxProviderCli(networkMagic, fullPath)
 	if err != nil {
 		return nil, err
 	}
