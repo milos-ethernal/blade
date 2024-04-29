@@ -28,11 +28,9 @@ func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 	)
 
 	for i := 0; i < clusterCnt; i++ {
-		id := i
-
 		wg.Add(1)
 
-		go func() {
+		go func(id int) {
 			defer wg.Done()
 
 			logsDir := fmt.Sprintf("%s/%d", baseLogsDir, id)
@@ -45,6 +43,7 @@ func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 			cluster, err := cardanofw.NewCardanoTestCluster(t,
 				cardanofw.WithID(id+1),
 				cardanofw.WithNodesCount(4),
+				cardanofw.WithStartNodeID(id*4+1),
 				cardanofw.WithStartTimeDelay(time.Second*5),
 				cardanofw.WithPort(5000+id*100),
 				cardanofw.WithLogsDir(logsDir),
@@ -66,7 +65,7 @@ func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 			t.Log("Waiting for blocks", "id", id+1)
 
 			errors[id] = cluster.WaitForBlockWithState(context.Background(), 10, time.Second*300)
-		}()
+		}(i)
 	}
 
 	wg.Wait()

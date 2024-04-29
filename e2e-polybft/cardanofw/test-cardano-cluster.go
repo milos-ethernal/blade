@@ -46,7 +46,7 @@ type TestCardanoClusterConfig struct {
 	NetworkMagic   int
 	SecurityParam  int
 	NodesCount     int
-	StartNodeId    int
+	StartNodeID    int
 	Port           int
 	InitialSupply  *big.Int
 	BlockTimeMilis int
@@ -147,6 +147,12 @@ func WithStartTimeDelay(delay time.Duration) CardanoClusterOption {
 	}
 }
 
+func WithStartNodeID(startNodeID int) CardanoClusterOption {
+	return func(h *TestCardanoClusterConfig) {
+		h.StartNodeID = startNodeID
+	}
+}
+
 func WithPort(port int) CardanoClusterOption {
 	return func(h *TestCardanoClusterConfig) {
 		h.Port = port
@@ -240,7 +246,7 @@ func NewCardanoTestCluster(t *testing.T, opts ...CardanoClusterOption) (*TestCar
 	}
 
 	for i := 0; i < cluster.Config.NodesCount; i++ {
-		id := cluster.Config.StartNodeId + i
+		id := cluster.Config.StartNodeID + i
 		port := cluster.Config.Port + i
 		socketPath := fmt.Sprintf("node-spo%d/node.socket", id)
 
