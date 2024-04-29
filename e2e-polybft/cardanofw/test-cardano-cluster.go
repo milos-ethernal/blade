@@ -3,8 +3,10 @@ package cardanofw
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -18,23 +20,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/0xPolygon/polygon-edge/e2e-polybft/framework"
 	"github.com/0xPolygon/polygon-edge/helper/common"
+	cardano_wallet "github.com/Ethernal-Tech/cardano-infrastructure/wallet"
 )
 
 //go:embed files/*
 var cardanoFiles embed.FS
 
 const hostIP = "cluster-%d-node-%d"
-
-func resolveCardanoNodeBinary() string {
-	bin := os.Getenv("CARDANO_NODE_BINARY")
-	if bin != "" {
-		return bin
-	}
-	// fallback
-	return "cardano-node"
-}
 
 func resolveCardanoCliBinary() string {
 	bin := os.Getenv("CARDANO_CLI_BINARY")
@@ -52,6 +45,7 @@ type TestCardanoClusterConfig struct {
 	NetworkMagic   int
 	SecurityParam  int
 	NodesCount     int
+	StartNodeId    int
 	Port           int
 	InitialSupply  *big.Int
 	BlockTimeMilis int
@@ -244,7 +238,18 @@ func NewCardanoTestCluster(t *testing.T, opts ...CardanoClusterOption) (*TestCar
 		return nil, err
 	}
 
-	_ = cluster.StartDocker()
+	for i := 0; i < cluster.Config.NodesCount; i++ {
+		id := cluster.Config.StartNodeId + i
+		port := cluster.Config.Port + i
+		socketPath := fmt.Sprintf("node-spo%d/node.socket", id)
+
+		server, err := NewCardanoTestServer(id, port, uint(config.NetworkMagic), config.Dir(""), socketPath)
+		if err != nil {
+			return nil, err
+		}
+
+		cluster.Servers = append(cluster.Servers, server)
+	}
 
 	return cluster, nil
 }
@@ -255,12 +260,7 @@ func (c *TestCardanoCluster) StartDocker() error {
 	var b bytes.Buffer
 	stdOut := c.Config.GetStdout("docker-compose", &b)
 
-	err := c.runCommand("docker-compose", []string{"-f", dockerFile, "up", "-d"}, stdOut)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return c.runCommand("docker-compose", []string{"-f", dockerFile, "up", "-d"}, stdOut)
 }
 
 func (c *TestCardanoCluster) StopDocker() error {
@@ -269,137 +269,38 @@ func (c *TestCardanoCluster) StopDocker() error {
 	var b bytes.Buffer
 	stdOut := c.Config.GetStdout("docker-compose", &b)
 
-	err := c.runCommand("docker-compose", []string{"-f", dockerFile, "down"}, stdOut)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return c.runCommand("docker-compose", []string{"-f", dockerFile, "down"}, stdOut)
 }
 
-func (c *TestCardanoCluster) NewTestServer(t *testing.T, id int, port int) error {
-	t.Helper()
-
-	srv, err := NewCardanoTestServer(t, &TestCardanoServerConfig{
-		ID:         id,
-		Port:       port,
-		StdOut:     c.Config.GetStdout(fmt.Sprintf("node-%d", id)),
-		ConfigFile: c.Config.Dir("configuration.yaml"),
-		NodeDir:    c.Config.Dir(fmt.Sprintf("node-spo%d", id)),
-		Binary:     resolveCardanoNodeBinary(),
-	})
-	if err != nil {
-		return err
-	}
-
-	// watch the server for stop signals. It is important to fix the specific
-	// 'node' reference since 'TestServer' creates a new one if restarted.
-	go func(node *framework.Node) {
-		<-node.Wait()
-
-		if !node.ExitResult().Signaled {
-			c.Fail(fmt.Errorf("server id = %d, port = %d has stopped unexpectedly", id, port))
-		}
-	}(srv.node)
-
-	c.Servers = append(c.Servers, srv)
-
-	return err
-}
-
-func (c *TestCardanoCluster) Fail(err error) {
-	c.once.Do(func() {
-		c.executionErr = err
-		close(c.failCh)
-	})
-}
-
-func (c *TestCardanoCluster) Stop() {
-	for _, srv := range c.Servers {
-		if srv.IsRunning() {
-			_ = srv.Stop()
-		}
-	}
-}
-
-func (c *TestCardanoCluster) WaitForReady(timeout time.Duration) error {
-	return c.WaitUntil(timeout, time.Second*2, func() (bool, error) {
-		_, ready, err := c.Stats()
-
-		return ready, err
-	})
-}
-
-func (c *TestCardanoCluster) GetSockets() []string {
-	sockets := make([]string, len(c.Servers))
-	for i, srv := range c.Servers {
-		sockets[i] = srv.SocketPath()
-	}
-
-	return sockets
-}
-
-func (c *TestCardanoCluster) Stats() ([]*TestCardanoStats, bool, error) {
-	blocks := make([]*TestCardanoStats, len(c.Servers))
-	ready := make([]bool, len(c.Servers))
-	errors := make([]error, len(c.Servers))
+func (c *TestCardanoCluster) Stats(
+	ctx context.Context,
+) ([]cardano_wallet.QueryTipData, error) {
+	result := make([]cardano_wallet.QueryTipData, len(c.Servers))
+	errs := make([]error, len(c.Servers))
 	wg := sync.WaitGroup{}
 
-	for i := range c.Servers {
-		id, srv := i, c.Servers[i]
-		if !srv.IsRunning() {
-			ready[id] = true
-
-			continue
-		}
-
+	for i, srv := range c.Servers {
 		wg.Add(1)
 
-		go func() {
+		go func(indx int, txProv cardano_wallet.ITxProvider) {
 			defer wg.Done()
 
-			var b bytes.Buffer
+			tip, err := txProv.GetTip(ctx)
+			if err != nil {
+				errs[indx] = fmt.Errorf("error for provider %d: %w", indx, err)
 
-			stdOut := c.Config.GetStdout(fmt.Sprintf("cardano-stats-%d", srv.ID()), &b)
-			args := []string{
-				"query", "tip",
-				"--testnet-magic", strconv.Itoa(c.Config.NetworkMagic),
-				"--socket-path", srv.SocketPath(),
-			}
-
-			if err := c.runCommand(c.Config.Binary, args, stdOut); err != nil {
-				if strings.Contains(err.Error(), "Network.Socket.connect") &&
-					strings.Contains(err.Error(), "does not exist (No such file or directory)") {
-					c.Config.t.Log("socket error", "path", srv.SocketPath(), "err", err)
-
-					return
-				}
-
-				ready[id], errors[id] = true, err
+				c.Config.t.Log("query tip error", "indx", indx, "err", err)
 
 				return
 			}
 
-			stat, err := NewTestCardanoStats(b.Bytes())
-			if err != nil {
-				ready[id], errors[id] = true, err
-			}
-
-			ready[id], blocks[id] = true, stat
-		}()
+			result[indx] = tip
+		}(i, srv.GetTxProvider())
 	}
 
 	wg.Wait()
 
-	for i, err := range errors {
-		if err != nil {
-			return nil, true, err
-		} else if !ready[i] {
-			return nil, false, nil
-		}
-	}
-
-	return blocks, true, nil
+	return result, errors.Join(errs...)
 }
 
 func (c *TestCardanoCluster) WaitUntil(timeout, frequency time.Duration, handler func() (bool, error)) error {
@@ -427,19 +328,19 @@ func (c *TestCardanoCluster) WaitUntil(timeout, frequency time.Duration, handler
 	}
 }
 
-func (c *TestCardanoCluster) WaitForBlock(n uint64, timeout time.Duration, frequency time.Duration) error {
+func (c *TestCardanoCluster) WaitForBlock(
+	ctx context.Context, n uint64, timeout time.Duration, frequency time.Duration,
+) error {
 	return c.WaitUntil(timeout, frequency, func() (bool, error) {
-		blocks, ready, err := c.Stats()
+		tips, err := c.Stats(ctx)
 		if err != nil {
 			return false, err
-		} else if !ready {
-			return false, nil
 		}
 
-		c.Config.t.Log("WaitForBlock", "blocks", blocks)
+		c.Config.t.Log("WaitForBlock", "tips", tips)
 
-		for _, bn := range blocks {
-			if bn != nil && bn.Block < n {
+		for _, tip := range tips {
+			if tip.Block < n {
 				return false, nil
 			}
 		}
@@ -448,25 +349,24 @@ func (c *TestCardanoCluster) WaitForBlock(n uint64, timeout time.Duration, frequ
 	})
 }
 
-func (c *TestCardanoCluster) WaitForBlockWithState(n uint64, timeout time.Duration) error {
+func (c *TestCardanoCluster) WaitForBlockWithState(
+	ctx context.Context, n uint64, timeout time.Duration,
+) error {
 	servers := c.Servers
-	countRunningServers := c.RunningServersCount()
-	blockState := make(map[uint64]map[int]string, countRunningServers)
+	blockState := make(map[uint64]map[int]string, len(c.Servers))
 
 	return c.WaitUntil(timeout, time.Millisecond*200, func() (bool, error) {
-		blocks, ready, err := c.Stats()
+		tips, err := c.Stats(ctx)
 		if err != nil {
 			return false, err
-		} else if !ready {
-			return false, nil
 		}
 
-		c.Config.t.Log("WaitForBlockWithState", "blocks", blocks)
+		c.Config.t.Log("WaitForBlockWithState", "tips", tips)
 
-		for i, bn := range blocks {
+		for i, bn := range tips {
 			serverID := servers[i].ID()
 			// bn == nil -> server is stopped + dont remember smaller than n blocks
-			if bn == nil || bn.Block < n {
+			if bn.Block < n {
 				continue
 			}
 
@@ -482,7 +382,7 @@ func (c *TestCardanoCluster) WaitForBlockWithState(n uint64, timeout time.Durati
 		// for all running servers there must be at least one block >= n
 		// that all servers have with same hash
 		for _, mp := range blockState {
-			if len(mp) != countRunningServers {
+			if len(mp) != len(c.Servers) {
 				continue
 			}
 
@@ -732,24 +632,29 @@ func (c *TestCardanoCluster) GenerateDockerComposeFiles() error {
 	_, _ = writer.WriteString("version: \"3.9\"\n\n")
 	_, _ = writer.WriteString("services:\n")
 
-	for node := 1; node <= c.Config.NodesCount; node++ {
-		_, _ = writer.WriteString(fmt.Sprintf("  cluster-%d-node-%d:\n", c.Config.ID, node))
+	for _, srv := range c.Servers {
+		nodeID := srv.ID()
+		dockerSocketPath := srv.SocketPath("/node-data")
+
+		_, _ = writer.WriteString(fmt.Sprintf("  cluster-%d-node-%d:\n", c.Config.ID, nodeID))
 		_, _ = writer.WriteString("    image: ghcr.io/intersectmbo/cardano-node:8.7.3\n")
 		_, _ = writer.WriteString("    environment:\n")
 		_, _ = writer.WriteString("      - CARDANO_BLOCK_PRODUCER=true\n")
 		_, _ = writer.WriteString("      - CARDANO_CONFIG=/node-data/configuration.yaml\n")
-		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_TOPOLOGY=/node-data/node-spo%d/topology.json\n", node))
-		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_DATABASE_PATH=/node-data/node-spo%d/db\n", node))
-		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_SOCKET_PATH=/node-data/node-spo%d/node.socket\n", node))
-		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_SHELLEY_KES_KEY=/node-data/node-spo%d/kes.skey\n", node))
-		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_SHELLEY_VRF_KEY=/node-data/node-spo%d/vrf.skey\n", node))
+		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_TOPOLOGY=/node-data/node-spo%d/topology.json\n", nodeID))
+		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_DATABASE_PATH=/node-data/node-spo%d/db\n", nodeID))
+		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_SOCKET_PATH=%s\n", dockerSocketPath))
+		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_SHELLEY_KES_KEY=/node-data/node-spo%d/kes.skey\n", nodeID))
+		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_SHELLEY_VRF_KEY=/node-data/node-spo%d/vrf.skey\n", nodeID))
 		_, _ = writer.WriteString(
-			fmt.Sprintf("      - CARDANO_SHELLEY_OPERATIONAL_CERTIFICATE=/node-data/node-spo%d/opcert.cert\n", node))
-		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_LOG_DIR=/node-data/node-spo%d/node.log\n", node))
+			fmt.Sprintf("      - CARDANO_SHELLEY_OPERATIONAL_CERTIFICATE=/node-data/node-spo%d/opcert.cert\n", nodeID))
+		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_LOG_DIR=/node-data/node-spo%d/node.log\n", nodeID))
 		_, _ = writer.WriteString("      - CARDANO_BIND_ADDR=0.0.0.0\n")
-		_, _ = writer.WriteString("      - CARDANO_PORT=7532\n")
+		_, _ = writer.WriteString(fmt.Sprintf("      - CARDANO_PORT=%d\n", srv.Port()))
 		_, _ = writer.WriteString("    command:\n")
 		_, _ = writer.WriteString("      - run\n")
+		_, _ = writer.WriteString("    ports:\n")
+		_, _ = writer.WriteString(fmt.Sprintf("      - %d:%d\n", srv.Port(), srv.Port()))
 		_, _ = writer.WriteString("    volumes:\n")
 		_, _ = writer.WriteString(fmt.Sprintf("      - %s:/node-data\n", c.Config.Dir("")))
 		_, _ = writer.WriteString("    restart: on-failure\n")
@@ -797,18 +702,6 @@ func (c *TestCardanoCluster) GenesisCreateStaked(startTime time.Time) error {
 	}
 
 	return err
-}
-
-func (c *TestCardanoCluster) RunningServersCount() int {
-	cnt := 0
-
-	for _, srv := range c.Servers {
-		if srv.IsRunning() {
-			cnt++
-		}
-	}
-
-	return cnt
 }
 
 func updateJSON(content []byte, callback func(mp map[string]interface{})) ([]byte, error) {

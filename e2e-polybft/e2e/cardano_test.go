@@ -1,14 +1,13 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"path"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/0xPolygon/polygon-edge/e2e-polybft/blockfrost"
 	"github.com/0xPolygon/polygon-edge/e2e-polybft/cardanofw"
 	"github.com/0xPolygon/polygon-edge/helper/common"
 	"github.com/stretchr/testify/assert"
@@ -27,8 +26,6 @@ func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 		wg          sync.WaitGroup
 		baseLogsDir = path.Join("../..", fmt.Sprintf("e2e-logs-cardano-%d", time.Now().UTC().Unix()), t.Name())
 	)
-
-	go blockfrost.ResetDBSync(15) //nolint:errcheck
 
 	for i := 0; i < clusterCnt; i++ {
 		id := i
@@ -60,30 +57,9 @@ func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 
 			defer cluster.StopDocker() //nolint:errcheck
 
-			t.Log("Waiting for sockets to be ready", "id", id+1, "sockets", strings.Join(cluster.GetSockets(), ", "))
-
-			if errors[id] = cluster.WaitForReady(time.Second * 100); errors[id] != nil {
-				return
-			}
-
 			t.Log("Waiting for blocks", "id", id+1)
 
-			t.Log("starting blockfrost")
-
-			bf, err := blockfrost.NewBlockFrost(cluster, id+1)
-			if err != nil {
-				errors[id] = err
-
-				return
-			}
-
-			if errors[id] = bf.Start(); errors[id] != nil {
-				return
-			}
-
-			defer bf.Stop() //nolint:errcheck
-
-			errors[id] = cluster.WaitForBlockWithState(10, time.Second*300)
+			errors[id] = cluster.WaitForBlockWithState(context.Background(), 10, time.Second*300)
 		}()
 	}
 
