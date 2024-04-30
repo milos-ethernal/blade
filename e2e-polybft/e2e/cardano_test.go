@@ -20,7 +20,7 @@ import (
 // eq add line `export PATH=$PATH:~/Apps/cardano` to  `~/.bashrc`
 func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 	const (
-		clusterCnt = 1
+		clusterCnt = 2
 	)
 
 	var (

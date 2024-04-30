@@ -209,10 +209,6 @@ func NewCardanoTestCluster(t *testing.T, opts ...CardanoClusterOption) (*TestCar
 		if err := os.RemoveAll(path.Dir(config.TmpDir)); err != nil {
 			return nil, err
 		}
-
-		if err := os.Remove(path.Dir(config.TmpDir)); err != nil {
-			return nil, err
-		}
 	}
 
 	if err := common.CreateDirSafe(config.TmpDir, 0750); err != nil {
