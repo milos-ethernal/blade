@@ -66,6 +66,8 @@ func ResetDBSync(
 	ticker := time.NewTicker(time.Second * 20)
 	defer ticker.Stop()
 
+	const targetBlockNum = 50
+
 	for {
 		select {
 		case <-timeout.C:
@@ -98,7 +100,7 @@ func ResetDBSync(
 			blockNum, err := extractBlockNumber(lastLog)
 			if err != nil {
 				t.Log(err.Error())
-			} else if blockNum >= 50 {
+			} else if blockNum >= targetBlockNum {
 				break
 			}
 		}
