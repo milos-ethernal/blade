@@ -205,9 +205,14 @@ func NewCardanoTestCluster(t *testing.T, opts ...CardanoClusterOption) (*TestCar
 	clusterName := fmt.Sprintf("cluster-%d", config.ID)
 	config.TmpDir = path.Join("../../e2e-docker-tmp", clusterName)
 
-	err := os.RemoveAll(config.TmpDir)
-	if err != nil {
-		return nil, err
+	if common.DirectoryExists(path.Dir(config.TmpDir)) {
+		if err := os.RemoveAll(path.Dir(config.TmpDir)); err != nil {
+			return nil, err
+		}
+
+		if err := os.Remove(path.Dir(config.TmpDir)); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := common.CreateDirSafe(config.TmpDir, 0750); err != nil {
@@ -267,7 +272,16 @@ func (c *TestCardanoCluster) StartDocker() error {
 	var b bytes.Buffer
 	stdOut := c.Config.GetStdout("docker-compose", &b)
 
-	return c.runCommand("docker-compose", []string{"-f", dockerFile, "up", "-d"}, stdOut)
+	err := c.runCommand("docker-compose", []string{"-f", dockerFile, "up", "-d"}, stdOut)
+	if err != nil {
+		cntErrors := strings.Count(err.Error(), "error")
+		if cntErrors == 1 &&
+			strings.Contains(err.Error(), "error during command execution: Creating network") {
+			err = nil
+		}
+	}
+
+	return err
 }
 
 func (c *TestCardanoCluster) StopDocker() error {

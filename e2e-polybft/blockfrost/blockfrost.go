@@ -11,8 +11,6 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/0xPolygon/polygon-edge/e2e-polybft/cardanofw"
 	"github.com/0xPolygon/polygon-edge/helper/common"
@@ -22,6 +20,7 @@ type BlockFrost struct {
 	ID          int
 	RootDir     string
 	ClusterName string
+	Port        int
 }
 
 type PostgresConfig struct {
@@ -70,7 +69,16 @@ func NewBlockFrost(cluster *cardanofw.TestCardanoCluster, id int) (*BlockFrost, 
 		ID:          id,
 		RootDir:     dockerDir,
 		ClusterName: clusterName,
+		Port:        blockfrostPort,
 	}, nil
+}
+
+func (bf BlockFrost) DBSyncContainerName() string {
+	return fmt.Sprintf("%s_db-sync_1", bf.ClusterName)
+}
+
+func (bf BlockFrost) URL() string {
+	return fmt.Sprintf("http://localhost:%d", bf.Port)
 }
 
 func (bf *BlockFrost) Start() error {
@@ -396,20 +404,19 @@ func replaceLine(filePath string, search string, replace string) error {
 	if err != nil {
 		return err
 	}
+
 	defer file.Close()
 
 	tempFile, err := os.CreateTemp("", "tempFile")
 	if err != nil {
 		return err
 	}
+
 	defer tempFile.Close()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.Contains(line, search) {
-			line = strings.Replace(line, search, replace, 1)
-		}
+		line := strings.Replace(scanner.Text(), search, replace, 1)
 
 		_, _ = tempFile.WriteString(line + "\n")
 	}
@@ -446,97 +453,4 @@ func runCommand(binary string, args []string, envVariables ...string) (string, e
 	}
 
 	return stdOutBuffer.String(), nil
-}
-
-func NewResetDBSync(startAfter int, dbSyncContainer string) error {
-	time.Sleep(time.Duration(startAfter) * time.Second)
-	cnt := 0
-
-	for {
-		time.Sleep(20 * time.Second)
-		res, _ := runCommand("docker", []string{"logs", dbSyncContainer})
-		logs := strings.Split(res, "\n")
-		if len(logs) < 2 {
-			continue
-		}
-		lastLog := logs[len(logs)-2] // last is empty string so we take one before last
-
-		if strings.Contains(lastLog, "Creating Indexes. This may take a while.") {
-			_, _ = runCommand("docker", []string{"restart", dbSyncContainer})
-			continue
-		}
-
-		if strings.Contains(lastLog, "Insert Babbage Block") {
-			fmt.Println(lastLog)
-			if cnt == 6 {
-				break
-			}
-			cnt += 1
-			continue
-		}
-	}
-
-	return nil
-}
-
-func ResetDBSync(startAfter int) error {
-	time.Sleep(time.Duration(startAfter) * time.Second)
-
-	found := false
-
-	var wg sync.WaitGroup
-
-	for !found {
-		time.Sleep(2 * time.Second)
-
-		args := []string{"ps", "--format", "{{.Names}}", "--filter", "name=db-sync"}
-		res, _ := runCommand("docker", args)
-		containers := strings.Split(res, "\n")
-
-		if len(containers) == 0 {
-			continue
-		}
-
-		found = true
-
-		for _, cName := range containers {
-			if cName == "" {
-				continue
-			}
-
-			wg.Add(1)
-
-			containerName := cName
-
-			go func() {
-				args := []string{"logs", containerName}
-
-				for i := 0; i < 6; i++ {
-					res, _ := runCommand("docker", args)
-					logs := strings.Split(res, "\n")
-					lastLog := logs[len(logs)-2] // last is empty string so we take one before last
-
-					if strings.Contains(lastLog, "Creating Indexes. This may take a while.") {
-						args := []string{"restart", containerName}
-
-						_, _ = runCommand("docker", args)
-
-						i = 0
-
-						continue
-					}
-
-					time.Sleep(20 * time.Second)
-				}
-
-				wg.Done()
-
-				_ = args
-			}()
-		}
-	}
-
-	wg.Wait()
-
-	return nil
 }

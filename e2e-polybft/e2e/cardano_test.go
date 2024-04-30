@@ -35,10 +35,16 @@ func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 
-			logsDir := fmt.Sprintf("%s/%d", baseLogsDir, id)
-			if err := common.CreateDirSafe(logsDir, 0750); err != nil {
+			checkAndSetError := func(err error) bool {
 				errors[id] = err
 
+				return err != nil
+			}
+
+			logsDir := fmt.Sprintf("%s/%d", baseLogsDir, id)
+
+			err := common.CreateDirSafe(logsDir, 0750)
+			if checkAndSetError(err) {
 				return
 			}
 
@@ -49,37 +55,42 @@ func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 				cardanofw.WithPort(5000+id*100),
 				cardanofw.WithLogsDir(logsDir),
 				cardanofw.WithNetworkMagic(42+id))
-			if err != nil {
-				errors[id] = err
-
+			if checkAndSetError(err) {
 				return
 			}
 
-			_ = cluster.StartDocker()
+			err = cluster.StartDocker()
+			if checkAndSetError(err) {
+				return
+			}
 
 			defer cluster.StopDocker() //nolint:errcheck
 
 			t.Log("Waiting for sockets to be ready")
 
-			// if errors[id] = cluster.WaitForReady(context.Background(), time.Second*300); errors[id] != nil {
-			// 	return
-			// }
-
 			bf, err := blockfrost.NewBlockFrost(cluster, id+1)
-			if err != nil {
-				errors[id] = err
+			if checkAndSetError(err) {
 				return
 			}
 
-			if errors[id] = bf.Start(); errors[id] != nil {
+			err = bf.Start()
+			if checkAndSetError(err) {
 				return
 			}
 
-			defer bf.Stop()
+			defer bf.Stop() //nolint:errcheck
 
-			errors[id] = blockfrost.NewResetDBSync(30, "cluster-1-blockfrost_db-sync_1")
+			err = blockfrost.ResetDBSync(t, time.Second*600, time.Second*20, bf.DBSyncContainerName())
+			if checkAndSetError(err) {
+				return
+			}
 
-			errors[id] = CheckBlock("http://localhost:12001", context.Background())
+			txProvider, err := wallet.NewTxProviderBlockFrost(bf.URL(), "")
+			if checkAndSetError(err) {
+				return
+			}
+
+			errors[id] = blockfrost.WaitUntilBlock(t, context.Background(), txProvider, 4, time.Second*10)
 		}(i)
 	}
 
@@ -88,20 +99,4 @@ func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 	for i := 0; i < clusterCnt; i++ {
 		assert.NoError(t, errors[i])
 	}
-}
-
-func CheckBlock(url string, ctx context.Context) error {
-	blockfrostProvider, err := wallet.NewTxProviderBlockFrost(url, "")
-	if err != nil {
-		return err
-	}
-
-	tipData, err := blockfrostProvider.GetTip(ctx)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(tipData)
-
-	return nil
 }
