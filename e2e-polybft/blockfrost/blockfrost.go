@@ -448,6 +448,37 @@ func runCommand(binary string, args []string, envVariables ...string) (string, e
 	return stdOutBuffer.String(), nil
 }
 
+func NewResetDBSync(startAfter int, dbSyncContainer string) error {
+	time.Sleep(time.Duration(startAfter) * time.Second)
+	cnt := 0
+
+	for {
+		time.Sleep(20 * time.Second)
+		res, _ := runCommand("docker", []string{"logs", dbSyncContainer})
+		logs := strings.Split(res, "\n")
+		if len(logs) < 2 {
+			continue
+		}
+		lastLog := logs[len(logs)-2] // last is empty string so we take one before last
+
+		if strings.Contains(lastLog, "Creating Indexes. This may take a while.") {
+			_, _ = runCommand("docker", []string{"restart", dbSyncContainer})
+			continue
+		}
+
+		if strings.Contains(lastLog, "Insert Babbage Block") {
+			fmt.Println(lastLog)
+			if cnt == 6 {
+				break
+			}
+			cnt += 1
+			continue
+		}
+	}
+
+	return nil
+}
+
 func ResetDBSync(startAfter int) error {
 	time.Sleep(time.Duration(startAfter) * time.Second)
 

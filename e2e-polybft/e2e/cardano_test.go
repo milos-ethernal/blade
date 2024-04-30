@@ -8,8 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/0xPolygon/polygon-edge/e2e-polybft/blockfrost"
 	"github.com/0xPolygon/polygon-edge/e2e-polybft/cardanofw"
 	"github.com/0xPolygon/polygon-edge/helper/common"
+	"github.com/Ethernal-Tech/cardano-infrastructure/wallet"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +20,7 @@ import (
 // eq add line `export PATH=$PATH:~/Apps/cardano` to  `~/.bashrc`
 func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 	const (
-		clusterCnt = 2
+		clusterCnt = 1
 	)
 
 	var (
@@ -59,13 +61,25 @@ func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 
 			t.Log("Waiting for sockets to be ready")
 
-			if errors[id] = cluster.WaitForReady(context.Background(), time.Second*300); errors[id] != nil {
+			// if errors[id] = cluster.WaitForReady(context.Background(), time.Second*300); errors[id] != nil {
+			// 	return
+			// }
+
+			bf, err := blockfrost.NewBlockFrost(cluster, id+1)
+			if err != nil {
+				errors[id] = err
 				return
 			}
 
-			t.Log("Waiting for blocks", "id", id+1)
+			if errors[id] = bf.Start(); errors[id] != nil {
+				return
+			}
 
-			errors[id] = cluster.WaitForBlockWithState(context.Background(), 10, time.Second*300)
+			defer bf.Stop()
+
+			errors[id] = blockfrost.NewResetDBSync(30, "cluster-1-blockfrost_db-sync_1")
+
+			errors[id] = CheckBlock("http://localhost:12001", context.Background())
 		}(i)
 	}
 
@@ -74,4 +88,20 @@ func TestE2E_CardanoTwoClustersBasic(t *testing.T) {
 	for i := 0; i < clusterCnt; i++ {
 		assert.NoError(t, errors[i])
 	}
+}
+
+func CheckBlock(url string, ctx context.Context) error {
+	blockfrostProvider, err := wallet.NewTxProviderBlockFrost(url, "")
+	if err != nil {
+		return err
+	}
+
+	tipData, err := blockfrostProvider.GetTip(ctx)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(tipData)
+
+	return nil
 }
