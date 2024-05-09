@@ -13,46 +13,15 @@ import (
 	"github.com/fxamacker/cbor/v2"
 )
 
-func PopulateAddress(ctx context.Context,
-	clusterID int,
+func SendTx(ctx context.Context,
 	txProvider wallet.ITxProvider,
-	dirPath string,
+	cardanoWallet wallet.IWallet,
 	amount uint64,
 	receiver string,
-	testnetMagic uint,
-	keyID uint,
-	nodesCnt uint) error {
-	if keyID < 1 && keyID > nodesCnt {
-		return fmt.Errorf("invalid key id")
-	}
-
-	clusterPath := path.Join(dirPath, strings.Join([]string{"cluster", fmt.Sprint(clusterID)}, "-"))
-
-	keyFileName := strings.Join([]string{"utxo", fmt.Sprint(keyID)}, "")
-
-	sKey, err := wallet.NewKey(path.Join(clusterPath, "utxo-keys", strings.Join([]string{keyFileName, "skey"}, ".")))
-	if err != nil {
-		return err
-	}
-
-	sKeyBytes, err := sKey.GetKeyBytes()
-	if err != nil {
-		return err
-	}
-
-	vKey, err := wallet.NewKey(path.Join(clusterPath, "utxo-keys", strings.Join([]string{keyFileName, "vkey"}, ".")))
-	if err != nil {
-		return err
-	}
-
-	vKeyBytes, err := vKey.GetKeyBytes()
-	if err != nil {
-		return err
-	}
-
-	genesisWallet := wallet.NewWallet(vKeyBytes, sKeyBytes, "")
-
-	genesisAddress, _, err := wallet.GetWalletAddress(genesisWallet, testnetMagic)
+	testnetMagic int,
+	metadata []byte,
+) error {
+	cardanoWalletAddr, _, err := wallet.GetWalletAddress(cardanoWallet, uint(testnetMagic))
 	if err != nil {
 		return err
 	}
@@ -74,7 +43,7 @@ func PopulateAddress(ctx context.Context,
 		},
 	}
 
-	utxos, err := txProvider.GetUtxos(ctx, genesisAddress)
+	utxos, err := txProvider.GetUtxos(ctx, cardanoWalletAddr)
 	if err != nil {
 		return err
 	}
@@ -89,18 +58,49 @@ func PopulateAddress(ctx context.Context,
 			Index: utxos[0].Index,
 		},
 	}
+	sendingAmount := utxos[0].Amount
 
-	rawTx, txHash, err := CreateTx(testnetMagic, protocolParams, qtd.Slot+TTLSlotNumberInc, []byte{}, outputs, inputs)
+	rawTx, txHash, err := CreateTx(uint(testnetMagic), protocolParams, qtd.Slot+TTLSlotNumberInc, metadata,
+		outputs, inputs, cardanoWalletAddr, sendingAmount, amount)
 	if err != nil {
 		return err
 	}
 
-	signedTx, err := wallet.SignTx(rawTx, txHash, genesisWallet)
+	signedTx, err := wallet.SignTx(rawTx, txHash, cardanoWallet)
 	if err != nil {
 		return err
 	}
 
 	return txProvider.SubmitTx(ctx, signedTx)
+}
+
+func GetGenesisWalletFromCluster(
+	dirPath string,
+	keyID uint,
+) (*wallet.Wallet, error) {
+	keyFileName := strings.Join([]string{"utxo", fmt.Sprint(keyID)}, "")
+
+	sKey, err := wallet.NewKey(path.Join(dirPath, "utxo-keys", strings.Join([]string{keyFileName, "skey"}, ".")))
+	if err != nil {
+		return nil, err
+	}
+
+	sKeyBytes, err := sKey.GetKeyBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	vKey, err := wallet.NewKey(path.Join(dirPath, "utxo-keys", strings.Join([]string{keyFileName, "vkey"}, ".")))
+	if err != nil {
+		return nil, err
+	}
+
+	vKeyBytes, err := vKey.GetKeyBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	return wallet.NewWallet(vKeyBytes, sKeyBytes, ""), nil
 }
 
 const TTLSlotNumberInc = 200
@@ -111,7 +111,10 @@ func CreateTx(testNetMagic uint,
 	timeToLive uint64,
 	metadataBytes []byte,
 	outputs []wallet.TxOutput,
-	inputs []wallet.TxInput) ([]byte, string, error) {
+	inputs []wallet.TxInput,
+	changeAddress string,
+	totalInput uint64,
+	totalOutput uint64) ([]byte, string, error) {
 	builder, err := wallet.NewTxBuilder()
 	if err != nil {
 		return nil, "", err
@@ -120,7 +123,19 @@ func CreateTx(testNetMagic uint,
 	defer builder.Dispose()
 
 	builder.SetProtocolParameters(protocolParams).SetTimeToLive(timeToLive)
-	builder.SetMetaData(metadataBytes).SetTestNetMagic(testNetMagic)
+
+	if len(metadataBytes) != 0 {
+		builder.SetMetaData(metadataBytes)
+	}
+
+	builder.SetTestNetMagic(testNetMagic)
+
+	// Add change
+	outputs = append(outputs, wallet.TxOutput{
+		Addr:   changeAddress,
+		Amount: 0,
+	})
+
 	builder.AddOutputs(outputs...)
 	builder.AddInputs(inputs...)
 
@@ -128,6 +143,14 @@ func CreateTx(testNetMagic uint,
 	if err != nil {
 		return nil, "", err
 	}
+
+	change := totalInput - totalOutput - fee
+	if change < wallet.MinUTxODefaultValue {
+		return []byte{}, "", fmt.Errorf("change too small, should be greater or equal than %v but change = %v",
+			wallet.MinUTxODefaultValue, change)
+	}
+
+	builder.UpdateOutputAmount(len(outputs)-1, change)
 
 	builder.SetFee(fee)
 
