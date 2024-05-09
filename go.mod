@@ -9,12 +9,13 @@ require (
 	github.com/Ethernal-Tech/cardano-infrastructure v0.0.0-20240429120440-bec2346890f2
 	github.com/Ethernal-Tech/merkle-tree v0.0.0-20231213143318-4db9da419e04
 	github.com/armon/go-metrics v0.4.1
-	github.com/aws/aws-sdk-go v1.51.11
+	github.com/aws/aws-sdk-go v1.51.18
 	github.com/btcsuite/btcd/btcec/v2 v2.3.3
 	github.com/docker/docker v24.0.9+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/envoyproxy/protoc-gen-validate v1.0.4
 	github.com/erigontech/mdbx-go v0.38.0
+	github.com/fxamacker/cbor/v2 v2.6.0
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.1
@@ -47,7 +48,7 @@ require (
 	golang.org/x/crypto v0.22.0
 	golang.org/x/sync v0.7.0
 	golang.org/x/tools v0.20.0
-	google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de
+	google.golang.org/genproto v0.0.0-20240401170217-c3f982113cda
 	google.golang.org/grpc v1.63.2
 	google.golang.org/protobuf v1.34.0
 	gopkg.in/DataDog/dd-trace-go.v1 v1.63.1
@@ -58,7 +59,6 @@ require (
 
 require (
 	github.com/blinklabs-io/gouroboros v0.79.0 // indirect
-	github.com/fxamacker/cbor/v2 v2.6.0 // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect
 	github.com/utxorpc/go-codegen v0.5.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
