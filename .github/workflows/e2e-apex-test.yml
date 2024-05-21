@@ -60,6 +60,8 @@ jobs:
         run: echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
       - name: Verify apex-bridge executable
         run: apex-bridge --help
+      - name: Checkout blade
+        uses: actions/checkout@v4.1.1
       - name: Check certificate key permissions
         run: ls -l /etc/ssl/private/localhost.key
       - name: Run tests
