@@ -54,10 +54,7 @@ jobs:
       - name: Build apex-bridge
         run: |
           go build
-          mkdir -p $GITHUB_WORKSPACE/bin
-          mv apex-bridge $GITHUB_WORKSPACE/bin/
-      - name: Add apex-bridge executable to PATH
-        run: echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
+          sudo mv apex-bridge /usr/local/bin/
       - name: Verify apex-bridge executable
         run: apex-bridge --help
       - name: Checkout blade
