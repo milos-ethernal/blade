@@ -213,7 +213,7 @@ for_loop:
 	require.True(t, wentFromFailedOnDestinationToIncludedInBatch)
 }
 
-func TestE2E_InvalidScenarios(t *testing.T) {
+func TestE2E_ApexBridge_InvalidScenarios(t *testing.T) {
 	const (
 		cardanoChainsCnt   = 2
 		bladeValidatorsNum = 4
@@ -524,7 +524,7 @@ func TestE2E_InvalidScenarios(t *testing.T) {
 	})
 }
 
-func TestE2E_ValidScenarios(t *testing.T) {
+func TestE2E_ApexBridge_ValidScenarios(t *testing.T) {
 	const (
 		cardanoChainsCnt   = 2
 		bladeValidatorsNum = 4
