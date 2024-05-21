@@ -42,21 +42,19 @@ jobs:
       - name: Install ogmios
         uses: milos-ethernal/ogmios-action@13e2be0b00da80f26bb8583fa129bd7c08856a49
       - name: Checkout apex-bridge repo
-        env:
-          PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
-        run: |
-          git clone https://milos-ethernal:${PRIVATE_REPO_TOKEN}@github.com/Ethernal-Tech/apex-bridge.git
-          cd apex-bridge
+        uses: actions/checkout@v4.1.1
+        with:
+          repository: Ethernal-Tech/apex-bridge
+          ref: main
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
       - name: Build apex-bridge
         run: |
-          cd apex-bridge
           go build
-          mkdir -p $GITHUB_WORKSPACE/bin
-          mv apex-bridge $GITHUB_WORKSPACE/bin/
-      - name: Add apex-bridge executable to PATH
-        run: echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
+          sudo mv apex-bridge /usr/local/bin/
       - name: Verify apex-bridge executable
         run: apex-bridge --help
+      - name: Checkout blade
+        uses: actions/checkout@v4.1.1
       - name: Check certificate key permissions
         run: ls -l /etc/ssl/private/localhost.key
       - name: Run tests
