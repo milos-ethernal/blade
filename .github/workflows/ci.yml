@@ -5,8 +5,6 @@ on: # yamllint disable-line rule:truthy
     branches:
       - main
       - develop
-    branches-ignore:
-      - feature/apex-bridge
   pull_request:
     branches-ignore:
       - feature/apex-bridge
