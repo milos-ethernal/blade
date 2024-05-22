@@ -293,7 +293,7 @@ func RunApexBridge(
 	cb := SetupAndRunApexBridge(t,
 		ctx,
 		// path.Join(path.Dir(primeCluster.Config.TmpDir), "bridge"),
-		"../../e2e-bridge-data-tmp",
+		"../../e2e-bridge-data-tmp-"+t.Name(),
 		bladeValidatorsNum,
 		primeCluster,
 		vectorCluster,
