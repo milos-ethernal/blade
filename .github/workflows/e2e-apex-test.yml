@@ -5,6 +5,9 @@ on: # yamllint disable-line rule:truthy
       workflow_output:
         description: E2E ApexBridge Tests output
         value: ${{ jobs.apex.outputs.e2e_apex_output_failure }} 
+     secrets:
+      PERSONAL_ACCESS_TOKEN:
+        required: true
 
 jobs:
   e2e_apex_bridge:
@@ -45,7 +48,7 @@ jobs:
         with:
           repository: Ethernal-Tech/apex-bridge
           ref: main
-          token: ${{ secrets.APEX_ACCESS_TOKEN }}
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
       - name: Build apex-bridge
         run: |
           go build
