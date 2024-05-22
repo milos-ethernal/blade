@@ -46,7 +46,7 @@ jobs:
         with:
           repository: Ethernal-Tech/apex-bridge
           ref: main
-          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
       - name: Build apex-bridge
         run: |
           go build

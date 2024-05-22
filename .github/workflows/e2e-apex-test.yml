@@ -1,9 +1,6 @@
 ---
 name: E2E ApexBridge Tests
 on: # yamllint disable-line rule:truthy
-  push:
-    branches:
-        - feature/apex-bridge-action
   workflow_call:
     outputs:
       workflow_output:
@@ -11,7 +8,7 @@ on: # yamllint disable-line rule:truthy
         value: ${{ jobs.apex.outputs.e2e_apex_output_failure }} 
 
 jobs:
-  e2e_apex-bridge:
+  e2e_apex_bridge:
     name: Run E2E ApexBridge Tests
     runs-on: ubuntu-latest
     env:
@@ -49,7 +46,7 @@ jobs:
         with:
           repository: Ethernal-Tech/apex-bridge
           ref: main
-          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
       - name: Build apex-bridge
         run: |
           go build
