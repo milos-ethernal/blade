@@ -5,7 +5,7 @@ on: # yamllint disable-line rule:truthy
       - feature/apex-bridge
   pull_request:
     branches:
-        - feature/apex-bridge
+      - feature/apex-bridge
   workflow_dispatch:
     inputs:
       build_blade:

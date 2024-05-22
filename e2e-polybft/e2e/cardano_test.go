@@ -230,10 +230,11 @@ func TestE2E_ApexBridge_InvalidScenarios(t *testing.T) {
 			require.NoError(t, err)
 
 			fundSendAmount := uint64(5_000_000)
-			_, err = cardanofw.SendTx(ctx, txProviderPrime, primeGenesisWallet,
+			txHash, err := cardanofw.SendTx(ctx, txProviderPrime, primeGenesisWallet,
 				fundSendAmount, walletAddress, apex.PrimeCluster.Config.NetworkMagic, []byte{})
 			require.NoError(t, err)
-			time.Sleep(time.Second * 5)
+			err = wallet.WaitForTxHashInUtxos(ctx, txProviderPrime, walletAddress, txHash, 60, time.Second*2)
+			require.NoError(t, err)
 		}
 
 		sendAmount := uint64(1_000_000)
