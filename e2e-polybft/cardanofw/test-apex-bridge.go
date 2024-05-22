@@ -17,6 +17,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type ApexSystem struct {
+	PrimeCluster  *TestCardanoCluster
+	VectorCluster *TestCardanoCluster
+	Bridge        *TestCardanoBridge
+}
+
 func SetupAndRunApexCardanoChains(
 	t *testing.T,
 	ctx context.Context,
@@ -261,7 +267,10 @@ func SetupAndRunApexBridge(
 	return cb
 }
 
-func RunApexBridge(t *testing.T, ctx context.Context) *TestCardanoBridge {
+func RunApexBridge(
+	t *testing.T, ctx context.Context,
+	opts ...CardanoBridgeOption,
+) *ApexSystem {
 	t.Helper()
 
 	const (
@@ -281,31 +290,6 @@ func RunApexBridge(t *testing.T, ctx context.Context) *TestCardanoBridge {
 	vectorCluster := clusters[1]
 	require.NotNil(t, vectorCluster)
 
-	user := NewTestApexUser(
-		t, uint(primeCluster.Config.NetworkMagic), uint(vectorCluster.Config.NetworkMagic))
-
-	t.Cleanup(user.Dispose)
-
-	txProviderPrime := wallet.NewTxProviderOgmios(primeCluster.OgmiosURL())
-	txProviderVector := wallet.NewTxProviderOgmios(vectorCluster.OgmiosURL())
-
-	// Fund prime address
-	primeGenesisWallet, err := GetGenesisWalletFromCluster(primeCluster.Config.TmpDir, 2)
-	require.NoError(t, err)
-
-	sendAmount := uint64(5_000_000)
-	user.SendToUser(t, ctx, txProviderPrime, primeGenesisWallet, sendAmount, true)
-
-	fmt.Printf("Prime user address funded\n")
-
-	// Fund vector address
-	vectorGenesisWallet, err := GetGenesisWalletFromCluster(vectorCluster.Config.TmpDir, 2)
-	require.NoError(t, err)
-
-	user.SendToUser(t, ctx, txProviderVector, vectorGenesisWallet, sendAmount, false)
-
-	fmt.Printf("Vector user address funded\n")
-
 	cb := SetupAndRunApexBridge(t,
 		ctx,
 		// path.Join(path.Dir(primeCluster.Config.TmpDir), "bridge"),
@@ -313,9 +297,69 @@ func RunApexBridge(t *testing.T, ctx context.Context) *TestCardanoBridge {
 		bladeValidatorsNum,
 		primeCluster,
 		vectorCluster,
+		opts...,
 	)
 
 	fmt.Printf("Apex bridge setup done\n")
 
-	return cb
+	return &ApexSystem{
+		PrimeCluster:  primeCluster,
+		VectorCluster: vectorCluster,
+		Bridge:        cb,
+	}
+}
+
+func (a *ApexSystem) GetPrimeGenesisWallet(t *testing.T) wallet.IWallet {
+	t.Helper()
+
+	primeGenesisWallet, err := GetGenesisWalletFromCluster(a.PrimeCluster.Config.TmpDir, 2)
+	require.NoError(t, err)
+
+	return primeGenesisWallet
+}
+
+func (a *ApexSystem) GetVectorGenesisWallet(t *testing.T) wallet.IWallet {
+	t.Helper()
+
+	vectorGenesisWallet, err := GetGenesisWalletFromCluster(a.VectorCluster.Config.TmpDir, 2)
+	require.NoError(t, err)
+
+	return vectorGenesisWallet
+}
+
+func (a *ApexSystem) GetPrimeTxProvider() wallet.ITxProvider {
+	return wallet.NewTxProviderOgmios(a.PrimeCluster.OgmiosURL())
+}
+
+func (a *ApexSystem) GetVectorTxProvider() wallet.ITxProvider {
+	return wallet.NewTxProviderOgmios(a.VectorCluster.OgmiosURL())
+}
+
+func (a *ApexSystem) CreateAndFundUser(t *testing.T, ctx context.Context, sendAmount uint64) *TestApexUser {
+	t.Helper()
+
+	user := NewTestApexUser(
+		t, uint(a.PrimeCluster.Config.NetworkMagic), uint(a.VectorCluster.Config.NetworkMagic))
+
+	t.Cleanup(user.Dispose)
+
+	txProviderPrime := a.GetPrimeTxProvider()
+	txProviderVector := a.GetVectorTxProvider()
+
+	// Fund prime address
+	primeGenesisWallet := a.GetPrimeGenesisWallet(t)
+
+	// sendAmount := uint64(5_000_000)
+	user.SendToUser(t, ctx, txProviderPrime, primeGenesisWallet, sendAmount, true)
+
+	fmt.Printf("Prime user address funded\n")
+
+	// Fund vector address
+	vectorGenesisWallet := a.GetVectorGenesisWallet(t)
+
+	user.SendToUser(t, ctx, txProviderVector, vectorGenesisWallet, sendAmount, false)
+
+	fmt.Printf("Vector user address funded\n")
+
+	return user
 }
