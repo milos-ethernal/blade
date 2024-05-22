@@ -150,7 +150,7 @@ for_loop:
 	require.True(t, wentFromFailedOnDestinationToIncludedInBatch)
 }
 
-func TestE2E_InvalidScenarios(t *testing.T) {
+func TestE2E_ApexBridge_InvalidScenarios(t *testing.T) {
 	const (
 		apiKey = "test_api_key"
 	)
@@ -444,7 +444,7 @@ func TestE2E_InvalidScenarios(t *testing.T) {
 	})
 }
 
-func TestE2E_ValidScenarios(t *testing.T) {
+func TestE2E_ApexBridge_ValidScenarios(t *testing.T) {
 	const (
 		apiKey = "test_api_key"
 	)
